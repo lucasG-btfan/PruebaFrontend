@@ -13,7 +13,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from config.logging_config import setup_logging
-from config.database import create_tables, engine
+from config.database_render import engine, get_db, create_tables
 from config.redis_config import redis_config, check_redis_connection
 from middleware.rate_limiter import RateLimiterMiddleware
 from middleware.request_id_middleware import RequestIDMiddleware
@@ -48,6 +48,16 @@ def create_fastapi_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc"
     )
+
+    @fastapi_app.get("/")
+    async def root():
+        """Root endpoint with API information"""
+        return {
+            "message": "E-commerce REST API",
+            "version": "1.0.0", 
+            "docs": "/docs",
+            "health": "/health_check"
+        }
 
     # Global exception handlers
     @fastapi_app.exception_handler(InstanceNotFoundError)
