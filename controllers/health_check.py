@@ -24,6 +24,15 @@ def health_check():
             "message": f"Health check error: {str(e)}"
         }
 
+@router.get("/simple")
+def simple_health_check():
+    """Ultra-fast health check"""
+    return {
+        "status": "healthy", 
+        "timestamp": datetime.utcnow().isoformat(),
+        "message": "API is running"
+    }
+
 # Endpoint completo separado
 @router.get("/detailed")
 def detailed_health_check():
