@@ -22,6 +22,7 @@ def get_db():
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
+<<<<<<< HEAD
 
 def check_connection():
     """Check database connection"""
@@ -32,3 +33,5 @@ def check_connection():
         return True
     except Exception:
         return False    
+=======
+>>>>>>> 9432b16bf97e899699c872af4ada09478de941ea
