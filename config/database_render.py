@@ -22,4 +22,13 @@ def get_db():
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
-    
+
+def check_connection():
+    """Check database connection"""
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        return True
+    except Exception:
+        return False    

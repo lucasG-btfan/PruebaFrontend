@@ -100,10 +100,15 @@ def create_fastapi_app() -> FastAPI:
     logger.info("✅ Request ID middleware enabled (distributed tracing)")
 
     # CORS Configuration
-    cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+    cors_origins = [
+        "https://tudominio-frontend.onrender.com",  # Tu frontend en Render
+        "http://localhost:3000",  # Desarrollo local
+        "http://localhost:5173",  # Vite dev server
+    ]
+
     fastapi_app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins if cors_origins != ["*"] else ["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
