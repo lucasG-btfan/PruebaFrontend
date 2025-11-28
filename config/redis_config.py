@@ -1,131 +1,81 @@
-"""
-Redis Configuration Module
-
-Provides Redis client connection and configuration for caching,
-sessions, and rate limiting.
-"""
 import os
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 import logging
-from typing import Optional
-import redis
-from redis.connection import ConnectionPool
 
 logger = logging.getLogger(__name__)
 
+# Determinar si estamos en Render (usar SQLite) o desarrollo (usar PostgreSQL)
+RENDER = os.getenv('RENDER', 'false').lower() == 'true'
 
-class RedisConfig:
-    """
-    Singleton Redis configuration class
+if RENDER:
+    # En Render, usar SQLite
+    DATABASE_URL = "sqlite:///./render_app.db"
+    logger.info("🚀 Using SQLite database on Render")
+else:
+    # En desarrollo, usar PostgreSQL de ElephantSQL
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    if not DATABASE_URL:
+        logger.error("❌ DATABASE_URL not set for development")
+        DATABASE_URL = "sqlite:///./dev_fallback.db"
+    
+    # Fix URL format for PostgreSQL
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    
+    logger.info("🔧 Using PostgreSQL database")
 
-    Manages Redis connection pool and provides a single client instance
-    across the application.
-    """
+logger.info(f"Database URL: {DATABASE_URL}")
 
-    _instance: Optional['RedisConfig'] = None
-    _client: Optional[redis.Redis] = None
-    _pool: Optional[ConnectionPool] = None
+# Create engine
+try:
+    if RENDER or DATABASE_URL.startswith('sqlite'):
+        # SQLite configuration
+        engine = create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False}
+        )
+    else:
+        # PostgreSQL configuration
+        engine = create_engine(
+            DATABASE_URL,
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True
+        )
+    
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    logger.info("✅ Database engine created successfully")
+    
+except Exception as e:
+    logger.error(f"❌ Failed to create database engine: {e}")
+    # Fallback to SQLite
+    DATABASE_URL = "sqlite:///./fallback.db"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    logger.info("🔄 Using fallback SQLite database")
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+Base = declarative_base()
 
-    def __init__(self):
-        if self._client is None:
-            self._initialize_client()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-    def _initialize_client(self):
-        """Initialize Redis client with connection pool"""
-        redis_host = os.getenv('REDIS_HOST', 'localhost')
-        redis_port = int(os.getenv('REDIS_PORT', '6379'))
-        redis_db = int(os.getenv('REDIS_DB', '0'))
-        redis_password = os.getenv('REDIS_PASSWORD', None)
-        max_connections = int(os.getenv('REDIS_MAX_CONNECTIONS', '50'))
-
-        try:
-            # Create connection pool
-            self._pool = ConnectionPool(
-                host=redis_host,
-                port=redis_port,
-                db=redis_db,
-                password=redis_password,
-                max_connections=max_connections,
-                decode_responses=True,  # Auto-decode bytes to str
-                socket_timeout=5,
-                socket_connect_timeout=5,
-                retry_on_timeout=True
-            )
-
-            # Create Redis client
-            self._client = redis.Redis(connection_pool=self._pool)
-
-            # Test connection
-            self._client.ping()
-            logger.info(f"✅ Redis connected successfully: {redis_host}:{redis_port} (DB: {redis_db})")
-
-        except redis.ConnectionError as e:
-            logger.warning(f"⚠️  Redis connection failed: {e}")
-            logger.warning("Application will run without caching")
-            self._client = None
-        except Exception as e:
-            logger.error(f"❌ Redis initialization error: {e}")
-            self._client = None
-
-    def get_client(self) -> Optional[redis.Redis]:
-        """
-        Get Redis client instance
-
-        Returns:
-            Redis client or None if connection failed
-        """
-        return self._client
-
-    def is_available(self) -> bool:
-        """
-        Check if Redis is available
-
-        Returns:
-            True if Redis is connected and responsive
-        """
-        if self._client is None:
-            return False
-
-        try:
-            return self._client.ping()
-        except (redis.ConnectionError, redis.TimeoutError, Exception) as e:
-            logger.debug(f"Redis ping failed: {e}")
-            return False
-
-    def close(self):
-        """Close Redis connection and pool"""
-        if self._client:
-            self._client.close()
-            logger.info("Redis connection closed")
-
-        if self._pool:
-            self._pool.disconnect()
-            logger.info("Redis connection pool disconnected")
-
-
-# Global Redis instance
-redis_config = RedisConfig()
-
-
-def get_redis_client() -> Optional[redis.Redis]:
-    """
-    Dependency injection function for FastAPI
-
-    Returns:
-        Redis client instance or None
-    """
-    return redis_config.get_client()
-
-
-def check_redis_connection() -> bool:
-    """
-    Check if Redis is available
-
-    Returns:
-        True if Redis is connected
-    """
-    return redis_config.is_available()
+def create_tables():
+    Base.metadata.create_all(bind=engine)
+    
+def check_connection():
+    """Check if database is accessible"""
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        logger.info("✅ Database connection check: SUCCESS")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Database connection check: FAILED - {str(e)}")
+        return False

@@ -163,8 +163,13 @@ def run_app(fastapi_app: FastAPI):
 
 
 if __name__ == "__main__":
-    # Create database tables on startup
-    create_tables()
+    try:
+        # Create database tables on startup
+        create_tables()
+        logger.info("✅ Database tables created successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to create database tables: {e}")
+        logger.info("🔄 Continuing without table creation...")
 
     # Create and run FastAPI application
     app = create_fastapi_app()
