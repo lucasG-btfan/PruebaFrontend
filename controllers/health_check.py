@@ -1,4 +1,11 @@
+from fastapi import APIRouter
+import time
+from datetime import datetime
+from database_render import check_connection
+
+router = APIRouter()
 # En controllers/health_check.py, modifica el endpoint raíz
+
 @router.get("/")
 def health_check():
     """Simple health check for quick response"""
