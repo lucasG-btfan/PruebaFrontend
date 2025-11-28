@@ -101,9 +101,9 @@ def create_fastapi_app() -> FastAPI:
 
     # CORS Configuration
     cors_origins = [
-        "https://tudominio-frontend.onrender.com",  # Tu frontend en Render
-        "http://localhost:3000",  # Desarrollo local
-        "http://localhost:5173",  # Vite dev server
+        "https://tu-frontend.onrender.com",  # URL real de tu frontend
+        "http://localhost:3000",
+        "http://localhost:5173",
     ]
 
     fastapi_app.add_middleware(
