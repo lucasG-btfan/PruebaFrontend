@@ -6,32 +6,55 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Get database URL from environment
-DATABASE_URL = os.getenv('DATABASE_URL')
+# Determinar si estamos en Render (usar SQLite) o desarrollo (usar PostgreSQL)
+RENDER = os.getenv('RENDER', 'false').lower() == 'true'
 
-if not DATABASE_URL:
-    logger.error("❌ DATABASE_URL environment variable is not set!")
-    # En producción, esto debería fallar
-    raise ValueError("DATABASE_URL environment variable is required")
+if RENDER:
+    # En Render, usar SQLite
+    DATABASE_URL = "sqlite:///./render_app.db"
+    logger.info("🚀 Using SQLite database on Render")
+else:
+    # En desarrollo, usar PostgreSQL de ElephantSQL
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    if not DATABASE_URL:
+        logger.error("❌ DATABASE_URL not set for development")
+        DATABASE_URL = "sqlite:///./dev_fallback.db"
+    
+    # Fix URL format for PostgreSQL
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    
+    logger.info("🔧 Using PostgreSQL database")
 
-# Fix URL format
-if DATABASE_URL.startswith('postgres://'):
-    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+logger.info(f"Database URL: {DATABASE_URL}")
 
-logger.info(f"🔧 Database URL: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else 'local'}")
-
+# Create engine
 try:
-    engine = create_engine(
-        DATABASE_URL,
-        pool_size=5,
-        max_overflow=10,
-        pool_pre_ping=True
-    )
+    if RENDER or DATABASE_URL.startswith('sqlite'):
+        # SQLite configuration
+        engine = create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False}
+        )
+    else:
+        # PostgreSQL configuration
+        engine = create_engine(
+            DATABASE_URL,
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True
+        )
+    
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     logger.info("✅ Database engine created successfully")
+    
 except Exception as e:
     logger.error(f"❌ Failed to create database engine: {e}")
-    raise
+    # Fallback to SQLite
+    DATABASE_URL = "sqlite:///./fallback.db"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    logger.info("🔄 Using fallback SQLite database")
 
 Base = declarative_base()
 
@@ -49,8 +72,7 @@ def check_connection():
     """Check if database is accessible"""
     try:
         db = SessionLocal()
-        # Try a simple query
-        result = db.execute("SELECT 1 as test")
+        db.execute("SELECT 1")
         db.close()
         logger.info("✅ Database connection check: SUCCESS")
         return True

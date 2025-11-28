@@ -1,81 +1,50 @@
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import redis
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Determinar si estamos en Render (usar SQLite) o desarrollo (usar PostgreSQL)
+# Check if we're in Render
 RENDER = os.getenv('RENDER', 'false').lower() == 'true'
 
 if RENDER:
-    # En Render, usar SQLite
-    DATABASE_URL = "sqlite:///./render_app.db"
-    logger.info("🚀 Using SQLite database on Render")
+    # En Render, no usar Redis (problemas de DNS)
+    redis_client = None
+    redis_config = None  # ← Mantener compatibilidad
+    logger.info("🚫 Redis disabled on Render due to DNS issues")
 else:
-    # En desarrollo, usar PostgreSQL de ElephantSQL
-    DATABASE_URL = os.getenv('DATABASE_URL')
-    if not DATABASE_URL:
-        logger.error("❌ DATABASE_URL not set for development")
-        DATABASE_URL = "sqlite:///./dev_fallback.db"
-    
-    # Fix URL format for PostgreSQL
-    if DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    
-    logger.info("🔧 Using PostgreSQL database")
-
-logger.info(f"Database URL: {DATABASE_URL}")
-
-# Create engine
-try:
-    if RENDER or DATABASE_URL.startswith('sqlite'):
-        # SQLite configuration
-        engine = create_engine(
-            DATABASE_URL,
-            connect_args={"check_same_thread": False}
-        )
-    else:
-        # PostgreSQL configuration
-        engine = create_engine(
-            DATABASE_URL,
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True
-        )
-    
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    logger.info("✅ Database engine created successfully")
-    
-except Exception as e:
-    logger.error(f"❌ Failed to create database engine: {e}")
-    # Fallback to SQLite
-    DATABASE_URL = "sqlite:///./fallback.db"
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    logger.info("🔄 Using fallback SQLite database")
-
-Base = declarative_base()
-
-def get_db():
-    db = SessionLocal()
+    # En desarrollo, intentar conectar a Redis
     try:
-        yield db
-    finally:
-        db.close()
-
-def create_tables():
-    Base.metadata.create_all(bind=engine)
-    
-def check_connection():
-    """Check if database is accessible"""
-    try:
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
-        logger.info("✅ Database connection check: SUCCESS")
-        return True
+        redis_host = os.getenv('REDIS_HOST', 'localhost')
+        redis_port = int(os.getenv('REDIS_PORT', 6379))
+        redis_db = int(os.getenv('REDIS_DB', 0))
+        
+        redis_client = redis.Redis(
+            host=redis_host,
+            port=redis_port,
+            db=redis_db,
+            decode_responses=True
+        )
+        redis_config = redis_client  # ← Mantener compatibilidad
+        # Test connection
+        redis_client.ping()
+        logger.info("✅ Redis connected successfully")
     except Exception as e:
-        logger.error(f"❌ Database connection check: FAILED - {str(e)}")
+        logger.warning(f"⚠️ Redis connection failed: {e}")
+        redis_client = None
+        redis_config = None
+        logger.info("Application will run without caching")
+
+def check_redis_connection():
+    """Check Redis connection"""
+    if redis_client is None:
         return False
+    try:
+        return redis_client.ping()
+    except Exception:
+        return False
+
+def close():
+    """Close Redis connection"""
+    if redis_client:
+        redis_client.close()
