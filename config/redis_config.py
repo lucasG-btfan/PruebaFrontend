@@ -7,10 +7,11 @@ logger = logging.getLogger(__name__)
 # Check if we're in Render
 RENDER = os.getenv('RENDER', 'false').lower() == 'true'
 
+# Configuración de Redis
+redis_client = None  
+
 if RENDER:
     # En Render, no usar Redis (problemas de DNS)
-    redis_client = None
-    redis_config = None  # ← Mantener compatibilidad
     logger.info("🚫 Redis disabled on Render due to DNS issues")
 else:
     # En desarrollo, intentar conectar a Redis
@@ -25,15 +26,18 @@ else:
             db=redis_db,
             decode_responses=True
         )
-        redis_config = redis_client  # ← Mantener compatibilidad
         # Test connection
         redis_client.ping()
         logger.info("✅ Redis connected successfully")
     except Exception as e:
         logger.warning(f"⚠️ Redis connection failed: {e}")
         redis_client = None
-        redis_config = None
         logger.info("Application will run without caching")
+
+# AÑADE ESTA FUNCIÓN FALTANTE
+def get_redis_client():
+    """Get Redis client instance"""
+    return redis_client
 
 def check_redis_connection():
     """Check Redis connection"""
