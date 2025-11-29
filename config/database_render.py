@@ -6,48 +6,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-RENDER = os.getenv('RENDER', 'false').lower() == 'true'
-
-if RENDER:
-    DATABASE_URL = os.getenv('DATABASE_URL')
-    if not DATABASE_URL:
-        logger.error("❌ DATABASE_URL not set for production")
-        DATABASE_URL = "sqlite:///./render_app.db"
-        logger.info("🔄 Using SQLite fallback database")
-    
-    if DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    
-    logger.info("🚀 Using PostgreSQL database on Render")
-else:
-    DATABASE_URL = os.getenv('DATABASE_URL')
-    if not DATABASE_URL:
-        logger.error("❌ DATABASE_URL not set for development")
-        DATABASE_URL = "sqlite:///./dev_fallback.db"
-    
-    if DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    
-    logger.info("🔧 Using development database")
-
-logger.info(f"Database URL configured")
+# 🔥 FIX: USAR SOLAMENTE SQLITE EN RENDER
+DATABASE_URL = "sqlite:///./render_app.db"
+logger.info("🚀 Using SQLite database for demo")
 
 try:
-    if DATABASE_URL.startswith('sqlite'):
-        engine = create_engine(
-            DATABASE_URL,
-            connect_args={"check_same_thread": False}
-        )
-    else:
-        engine = create_engine(
-            DATABASE_URL,
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True
-        )
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
     
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    logger.info("✅ Database engine created successfully")
+    logger.info("✅ SQLite database engine created successfully")
     
 except Exception as e:
     logger.error(f"❌ Failed to create database engine: {e}")
@@ -66,8 +36,12 @@ def get_db():
         db.close()
 
 def create_tables():
-    Base.metadata.create_all(bind=engine)
-    
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database tables created successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to create tables: {e}")
+
 def check_connection():
     """Check if database is accessible"""
     try:

@@ -49,6 +49,25 @@ def create_fastapi_app() -> FastAPI:
         redoc_url="/redoc"
     )
 
+    # CORS Configuration 
+    cors_origins = [
+        "https://pruebafrontend-ea20.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:5173", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "https://tu-frontend.onrender.com",  # Agrega tu frontend real
+    ]
+
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    logger.info(f"✅ CORS enabled for multiple origins")
+
     @fastapi_app.get("/")
     async def root():
         """Root endpoint with API information"""
@@ -98,25 +117,6 @@ def create_fastapi_app() -> FastAPI:
     # Request ID middleware runs FIRST (innermost) to capture all logs
     fastapi_app.add_middleware(RequestIDMiddleware)
     logger.info("✅ Request ID middleware enabled (distributed tracing)")
-
-# CORS Configuration 
-    cors_origins = [
-        "https://pruebafrontend-ea20.onrender.com",
-        "http://localhost:3000",
-        "http://localhost:5173", 
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "https://tu-frontend.onrender.com",  # Agrega tu frontend real
-    ]
-
-    fastapi_app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    logger.info(f"✅ CORS enabled for multiple origins")
 
     # Rate limiting: 100 requests per 60 seconds per IP (configurable via env)
     fastapi_app.add_middleware(RateLimiterMiddleware, calls=100, period=60)
