@@ -8,6 +8,9 @@ import os
 import uvicorn
 from config.database import create_tables
 
+# Import the app instance directly from main
+from main import app
+
 # Calculate optimal workers based on CPU cores
 CPU_COUNT = multiprocessing.cpu_count()
 DEFAULT_WORKERS = min(max(2 * CPU_COUNT + 1, 4), 8)  # Between 4-8 workers
@@ -15,7 +18,7 @@ DEFAULT_WORKERS = min(max(2 * CPU_COUNT + 1, 4), 8)  # Between 4-8 workers
 # Configuration from environment variables
 WORKERS = int(os.getenv('UVICORN_WORKERS', DEFAULT_WORKERS))
 HOST = os.getenv('API_HOST', '0.0.0.0')
-PORT = int(os.getenv('API_PORT', '8000'))
+PORT = int(os.getenv('PORT', 8000))
 RELOAD = os.getenv('RELOAD', 'false').lower() == 'true'
 
 # Performance tuning
@@ -33,22 +36,20 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"⚠️  Database tables may already exist or error occurred: {e}\n")
 
-    print(f"""
-╔══════════════════════════════════════════════════════════════╗
-║  🚀 FastAPI E-commerce - High Performance Production Mode  ║
-╚══════════════════════════════════════════════════════════════╝
-📊 Configuration:
-  • Workers: {WORKERS} (CPU cores: {CPU_COUNT})
-  • Host: {HOST}
-  • Port: {PORT}
-  • Backlog: {BACKLOG} pending connections
-  • Max concurrency: {LIMIT_CONCURRENCY} requests
-  • Keep-alive timeout: {TIMEOUT_KEEP_ALIVE}s
-🔥 Optimized for ~400 concurrent requests
-💾 Database pool: 50 connections + 100 overflow per worker
-⚡ Total capacity: ~{WORKERS * 150} database connections
-Starting server...
-""")
+    print("╔══════════════════════════════════════════════════════════════╗")
+    print("║  🚀 FastAPI E-commerce - High Performance Production Mode  ║")
+    print("╚══════════════════════════════════════════════════════════════╝")
+    print(f"📊 Configuration:")
+    print(f"  • Workers: {WORKERS} (CPU cores: {CPU_COUNT})")
+    print(f"  • Host: {HOST}")
+    print(f"  • Port: {PORT}")
+    print(f"  • Backlog: {BACKLOG} pending connections")
+    print(f"  • Max concurrency: {LIMIT_CONCURRENCY} requests")
+    print(f"  • Keep-alive timeout: {TIMEOUT_KEEP_ALIVE}s")
+    print("🔥 Optimized for ~400 concurrent requests")
+    print(f"💾 Database pool: 50 connections + 100 overflow per worker")
+    print(f"⚡ Total capacity: ~{WORKERS * 150} database connections")
+    print("Starting server...\n")
 
     uvicorn.run(
         "main:app",
@@ -62,6 +63,6 @@ Starting server...
         limit_concurrency=LIMIT_CONCURRENCY,
         limit_max_requests=LIMIT_MAX_REQUESTS,
         # Logging
-        log_level="info",
         access_log=True,
+        log_level="info",
     )

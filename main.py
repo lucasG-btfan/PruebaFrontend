@@ -117,11 +117,20 @@ def create_fastapi_app() -> FastAPI:
     fastapi_app.add_middleware(RateLimiterMiddleware, calls=100, period=60)
     logger.info("✅ Rate limiting enabled: 100 requests/60s per IP")
 
-    # Startup event: Check Redis connection
+    # Startup event: Check Redis connection and create tables
     @fastapi_app.on_event("startup")
     async def startup_event():
         """Run on application startup"""
         logger.info("🚀 Starting FastAPI E-commerce API...")
+        
+        # Create database tables
+        try:
+            create_tables()
+            logger.info("✅ Database tables created successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to create database tables: {e}")
+            logger.info("🔄 Continuing without table creation...")
+        
         # Check Redis connection
         if check_redis_connection():
             logger.info("✅ Redis cache is available")
@@ -149,25 +158,19 @@ def create_fastapi_app() -> FastAPI:
 
     return fastapi_app
 
-def run_app(fastapi_app: FastAPI):
-    """Run the FastAPI application with Uvicorn"""
+# ✅ CRÍTICO: Crear la instancia de app a nivel global
+# Esto es lo que Render busca cuando ejecuta "main:app"
+app = create_fastapi_app()
+
+# ✅ ELIMINAR el bloque __main__ o hacerlo condicional
+# Render no ejecuta __main__, solo importa 'app'
+if __name__ == "__main__":
+    # Solo para desarrollo local
     port = int(os.getenv("PORT", 8000))
+    logger.info(f"🚀 Starting local development server on port {port}")
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=port,
-        reload=False  # Desactivado para producción
+        reload=True  # Solo para desarrollo
     )
-
-if __name__ == "__main__":
-    try:
-        # Create database tables on startup
-        create_tables()
-        logger.info("✅ Database tables created successfully")
-    except Exception as e:
-        logger.error(f"❌ Failed to create database tables: {e}")
-        logger.info("🔄 Continuing without table creation...")
-
-    # Create and run FastAPI application
-    app = create_fastapi_app()
-    run_app(app)
