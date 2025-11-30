@@ -59,9 +59,12 @@ def create_fastapi_app() -> FastAPI:
         "https://tu-frontend.onrender.com",  # Agrega tu frontend real
     ]
 
-    fastapi_app.add_middleware(
+    fastapi_app.app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins,
+        allow_origins=[
+            "http://localhost:3000",  # Desarrollo
+            "https://tu-frontend-en-render.com"  # Producción
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
