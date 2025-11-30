@@ -1,17 +1,14 @@
+#!/usr/bin/env python3
 """
 Production server runner for high-concurrency FastAPI application.
-
 This script runs Uvicorn with multiple workers to handle 400+ concurrent requests.
 """
 import multiprocessing
 import os
-
 import uvicorn
 from config.database import create_tables
 
 # Calculate optimal workers based on CPU cores
-# Formula: (2 x $num_cores) + 1
-# For 400 concurrent requests, we use 4-8 workers depending on CPU
 CPU_COUNT = multiprocessing.cpu_count()
 DEFAULT_WORKERS = min(max(2 * CPU_COUNT + 1, 4), 8)  # Between 4-8 workers
 
@@ -40,7 +37,6 @@ if __name__ == "__main__":
 ╔══════════════════════════════════════════════════════════════╗
 ║  🚀 FastAPI E-commerce - High Performance Production Mode  ║
 ╚══════════════════════════════════════════════════════════════╝
-
 📊 Configuration:
   • Workers: {WORKERS} (CPU cores: {CPU_COUNT})
   • Host: {HOST}
@@ -48,17 +44,14 @@ if __name__ == "__main__":
   • Backlog: {BACKLOG} pending connections
   • Max concurrency: {LIMIT_CONCURRENCY} requests
   • Keep-alive timeout: {TIMEOUT_KEEP_ALIVE}s
-
 🔥 Optimized for ~400 concurrent requests
 💾 Database pool: 50 connections + 100 overflow per worker
 ⚡ Total capacity: ~{WORKERS * 150} database connections
-
 Starting server...
 """)
 
     uvicorn.run(
-        "main:create_fastapi_app",
-        factory=True,
+        "main:app",
         host=HOST,
         port=PORT,
         workers=WORKERS,
