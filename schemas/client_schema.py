@@ -9,6 +9,21 @@ if TYPE_CHECKING:
     from schemas.order_schema import OrderSchema
 
 
+class ClientCreateSchema(BaseSchema):
+    """Schema for Client creation with validations."""
+    
+    name: str = Field(..., min_length=1, max_length=100, description="Client's first name")
+    lastname: str = Field(..., min_length=1, max_length=100, description="Client's last name")
+    email: EmailStr = Field(..., description="Client's email address")
+    telephone: Optional[str] = Field(
+        None,
+        min_length=7,
+        max_length=20,
+        pattern=r'^\+?[1-9]\d{6,19}$',
+        description="Client's phone number (7-20 digits, optional + prefix)"
+    )
+
+
 class ClientSchema(BaseSchema):
     """Schema for Client entity with validations."""
 
