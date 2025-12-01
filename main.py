@@ -6,12 +6,14 @@ and configures global exception handlers.
 import os
 import uvicorn
 import logging
+import traceback
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette import status
 from starlette.responses import JSONResponse
+from sqlalchemy import inspect
 from config.logging_config import setup_logging
-from config.database_render import engine, get_db, create_tables
+from config.database_render import engine, get_db, Base
 from config.redis_config import redis_client as redis_config, check_redis_connection
 from middleware.rate_limiter import RateLimiterMiddleware
 from middleware.request_id_middleware import RequestIDMiddleware
@@ -20,6 +22,7 @@ from middleware.request_id_middleware import RequestIDMiddleware
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# Import controllers
 from controllers.address_controller import AddressController
 from controllers.bill_controller import BillController
 from controllers.category_controller import CategoryController
@@ -46,7 +49,7 @@ def create_fastapi_app() -> FastAPI:
         redoc_url="/redoc"
     )
 
-    # CORS Configuration - CORRECTED: Using fastapi_app directly
+    # CORS Configuration
     fastapi_app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -85,28 +88,20 @@ def create_fastapi_app() -> FastAPI:
     # Register controllers
     client_controller = ClientController()
     fastapi_app.include_router(client_controller.router, prefix="/clients")
-
     order_controller = OrderController()
     fastapi_app.include_router(order_controller.router, prefix="/orders")
-
     product_controller = ProductController()
     fastapi_app.include_router(product_controller.router, prefix="/products")
-
     address_controller = AddressController()
     fastapi_app.include_router(address_controller.router, prefix="/addresses")
-
     bill_controller = BillController()
     fastapi_app.include_router(bill_controller.router, prefix="/bills")
-
     order_detail_controller = OrderDetailController()
     fastapi_app.include_router(order_detail_controller.router, prefix="/order_details")
-
     review_controller = ReviewController()
     fastapi_app.include_router(review_controller.router, prefix="/reviews")
-
     category_controller = CategoryController()
     fastapi_app.include_router(category_controller.router, prefix="/categories")
-
     fastapi_app.include_router(health_check_controller, prefix="/health_check")
 
     # Request ID middleware runs FIRST (innermost) to capture all logs
@@ -117,49 +112,58 @@ def create_fastapi_app() -> FastAPI:
     fastapi_app.add_middleware(RateLimiterMiddleware, calls=100, period=60)
     logger.info("✅ Rate limiting enabled: 100 requests/60s per IP")
 
-    # Startup event: Check Redis connection and create tables
     @fastapi_app.on_event("startup")
     async def startup_event():
         """Run on application startup"""
         logger.info("🚀 Starting FastAPI E-commerce API...")
-        
-        # Create database tables
+
+        # Crear database tables - FORZAR creación solo si no existen
         try:
-            create_tables()
-            logger.info("✅ Database tables created successfully")
+            inspector = inspect(engine)
+            existing_tables = inspector.get_table_names()
+            logger.info(f"📊 Existing tables: {existing_tables}")
+
+            if 'clients' not in existing_tables:
+                logger.info("📦 The 'clients' table does not exist. Creating all tables...")
+                Base.metadata.create_all(bind=engine)
+                logger.info("✅ Database tables created successfully")
+            else:
+                logger.info("✅ The 'clients' table already exists")
+
         except Exception as e:
-            logger.error(f"❌ Failed to create database tables: {e}")
-            logger.info("🔄 Continuing without table creation...")
-        
+            logger.error(f"❌ Database error: {e}")
+            logger.error(traceback.format_exc())
+
         # Check Redis connection
         if check_redis_connection():
             logger.info("✅ Redis cache is available")
         else:
-            logger.warning("⚠️  Redis cache is NOT available - running without cache")
+            logger.warning("⚠️ Redis cache is NOT available - running without cache")
 
-    # Shutdown event: Graceful shutdown
     @fastapi_app.on_event("shutdown")
     async def shutdown_event():
         """Graceful shutdown - close all connections"""
         logger.info("👋 Shutting down FastAPI E-commerce API...")
+
         # Close Redis connection
         try:
             redis_config.close()
             logger.info("✅ Redis connection closed")
         except Exception as e:
             logger.error(f"❌ Error closing Redis: {e}")
+
         # Close database engine
         try:
             engine.dispose()
             logger.info("✅ Database engine disposed")
         except Exception as e:
             logger.error(f"❌ Error disposing database engine: {e}")
+
         logger.info("✅ Shutdown complete")
 
     return fastapi_app
 
 # ✅ CRÍTICO: Crear la instancia de app a nivel global
-# Esto es lo que Render busca cuando ejecuta "main:app"
 app = create_fastapi_app()
 
 # ✅ ELIMINAR el bloque __main__ o hacerlo condicional
