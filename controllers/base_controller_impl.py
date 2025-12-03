@@ -1,17 +1,14 @@
 """Base controller implementation module with FastAPI dependency injection."""
 from typing import Type, List, Callable
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
-
 from controllers.base_controller import BaseController
 from schemas.base_schema import BaseSchema
-from config.database import get_db
-
+from config.database_render import get_db
 
 class BaseControllerImpl(BaseController):
     """
     Base controller implementation using FastAPI dependency injection.
-
     This class creates standard CRUD endpoints and properly manages database sessions.
     """
 
@@ -23,7 +20,6 @@ class BaseControllerImpl(BaseController):
     ):
         """
         Initialize the controller with dependency injection support.
-
         Args:
             schema: The Pydantic schema class for validation
             service_factory: A callable that creates a service instance given a DB session
@@ -32,7 +28,6 @@ class BaseControllerImpl(BaseController):
         self.schema = schema
         self.service_factory = service_factory
         self.router = APIRouter(tags=tags or [])
-
         # Register all CRUD endpoints with proper dependency injection
         self._register_routes()
 
@@ -64,8 +59,20 @@ class BaseControllerImpl(BaseController):
             db: Session = Depends(get_db)
         ):
             """Create a new record."""
-            service = self.service_factory(db)
-            return service.save(schema_in)
+            import json
+            print(f"🎯 CREATE endpoint llamado")
+            print(f"📥 Datos recibidos: {schema_in}")
+            print(f"📥 Tipo: {type(schema_in)}")
+            print(f"📥 Dict: {schema_in.dict() if hasattr(schema_in, 'dict') else 'No dict method'}")
+
+            try:
+                service = self.service_factory(db)
+                result = service.save(schema_in)
+                return result
+            except Exception as e:
+                print(f"❌ Error en create: {str(e)}")
+                print(f"❌ Tipo de error: {type(e)}")
+                raise
 
         @self.router.put("/{id_key}", response_model=self.schema, status_code=status.HTTP_200_OK)
         async def update(

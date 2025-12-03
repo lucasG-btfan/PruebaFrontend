@@ -37,7 +37,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TIMEOUT_KEEP_ALIVE=5 \
     LIMIT_CONCURRENCY=1000 \
     LIMIT_MAX_REQUESTS=10000 \
-    DATABASE_URL=postgresql://user:password@db:5432/dbname
+    DATABASE_URL=postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a/ecommerce_db_sbeb
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

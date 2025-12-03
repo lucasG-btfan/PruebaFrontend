@@ -1,17 +1,28 @@
-from schemas.address_schema import AddressSchema
-from schemas.bill_schema import BillSchema
-from schemas.category_schema import CategorySchema
-from schemas.client_schema import ClientSchema
-from schemas.order_detail_schema import OrderDetailSchema
-from schemas.order_schema import OrderSchema
-from schemas.product_schema import ProductSchema
-from schemas.review_schema import ReviewSchema
+# schemas/__init__.py
+"""
+Pydantic schemas for request/response validation.
+"""
 
-AddressSchema.model_rebuild()
-ClientSchema.model_rebuild()
-OrderSchema.model_rebuild()
-ProductSchema.model_rebuild()
-OrderDetailSchema.model_rebuild()
-ReviewSchema.model_rebuild()
-CategorySchema.model_rebuild()
-BillSchema.model_rebuild()
+# Importar la base
+from schemas.base_schema import BaseSchema
+
+# Listar todos los esquemas disponibles
+__all__ = [
+    'BaseSchema',
+    'ClientSchema',
+    'ClientCreateSchema',
+    'ClientUpdateSchema',
+    'ClientResponseSchema',
+    'ProductSchema',
+    'CategorySchema',
+    'AddressSchema',
+    'OrderSchema',
+    'OrderDetailSchema',
+    'BillSchema',
+    'ReviewSchema'
+]
+
+print("📄 Initializing schemas package...")
+
+# NOTA: Los esquemas específicos se importarán cuando sean necesarios
+# para evitar problemas de importación circular

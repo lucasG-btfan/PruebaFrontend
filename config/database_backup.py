@@ -50,12 +50,30 @@ def get_db():
 def create_tables():
     """Create all database tables."""
     try:
+        if not initialize_models():
+            logger.error("❌ Failed to initialize models")
+            return False
+
+        logger.info("🔨 Creating database tables...")
         Base.metadata.create_all(bind=engine)
-        logger.info("✅ Database tables created successfully")
+
+        inspector = inspect(engine)
+        created_tables = inspector.get_table_names()
+        logger.info(f"✅ Tables created successfully: {created_tables}")
+
+        if 'clients' in created_tables:
+            columns = inspector.get_columns('clients')
+            logger.info("📋 Structure of 'clients' table:")
+            for col in columns:
+                logger.info(f"   - {col['name']}: {col['type']}")
+        else:
+            logger.error("❌ CRÍTICO: 'clients' table was NOT created!")
+
+        return True
     except Exception as e:
         logger.error(f"❌ Failed to create database tables: {e}")
-        raise
-
+        return False
+    
 def check_connection():
     """Check if database is accessible"""
     try:

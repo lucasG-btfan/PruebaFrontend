@@ -1,41 +1,56 @@
-"""Client schema for request/response validation."""
-from typing import Optional, List, TYPE_CHECKING
-from pydantic import EmailStr, Field
+# schemas/client_schema.py
+"""
+Pydantic schemas for Client.
+"""
+from typing import Optional, List
+from datetime import datetime
+from pydantic import BaseModel, EmailStr, Field
 
 from schemas.base_schema import BaseSchema
 
-if TYPE_CHECKING:
-    from schemas.address_schema import AddressSchema
-    from schemas.order_schema import OrderSchema
+
+class ClientBaseSchema(BaseSchema):
+    """Base schema for Client."""
+    full_name: str = Field(..., min_length=1, max_length=100, description="Full name of the client")
+    email: EmailStr = Field(..., description="Email address of the client")
+    phone: Optional[str] = Field(None, max_length=20, description="Phone number")
+    company: Optional[str] = Field(None, max_length=100, description="Company name")
+    tax_id: Optional[str] = Field(None, max_length=50, description="Tax ID")
+    notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
+    is_active: bool = Field(default=True, description="Whether the client is active")
 
 
-class ClientCreateSchema(BaseSchema):
-    """Schema for Client creation with validations."""
+class ClientCreateSchema(ClientBaseSchema):
+    """Schema for creating a new client."""
+    pass
+
+
+class ClientUpdateSchema(BaseSchema):
+    """Schema for updating an existing client."""
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    email: Optional[EmailStr] = Field(None)
+    phone: Optional[str] = Field(None, max_length=20)
+    company: Optional[str] = Field(None, max_length=100)
+    tax_id: Optional[str] = Field(None, max_length=50)
+    notes: Optional[str] = Field(None, max_length=500)
+    is_active: Optional[bool] = Field(None)
+
+
+class ClientResponseSchema(ClientBaseSchema):
+    """Schema for client response."""
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: Optional[datetime] = None
     
-    name: str = Field(..., min_length=1, max_length=100, description="Client's first name")
-    lastname: str = Field(..., min_length=1, max_length=100, description="Client's last name")
-    email: EmailStr = Field(..., description="Client's email address")
-    telephone: Optional[str] = Field(
-        None,
-        min_length=7,
-        max_length=20,
-        pattern=r'^\+?[1-9]\d{6,19}$',
-        description="Client's phone number (7-20 digits, optional + prefix)"
-    )
+    class Config:
+        from_attributes = True
 
 
-class ClientSchema(BaseSchema):
-    """Schema for Client entity with validations."""
-
-    name: Optional[str] = Field(None, min_length=1, max_length=100, description="Client's first name")
-    lastname: Optional[str] = Field(None, min_length=1, max_length=100, description="Client's last name")
-    email: Optional[EmailStr] = Field(None, description="Client's email address")
-    telephone: Optional[str] = Field(
-        None,
-        min_length=7,
-        max_length=20,
-        pattern=r'^\+?[1-9]\d{6,19}$',
-        description="Client's phone number (7-20 digits, optional + prefix)"
-    )
-    addresses: Optional[List['AddressSchema']] = []
-    orders: Optional[List['OrderSchema']] = []
+class ClientListResponseSchema(BaseModel):
+    """Schema for list of clients response."""
+    items: List[ClientResponseSchema]
+    total: int
+    page: int
+    size: int
+    pages: int
