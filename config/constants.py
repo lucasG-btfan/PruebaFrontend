@@ -62,10 +62,19 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Cache configuration
+CACHE_ENABLED = True
+CACHE_PREFIX = "ecommerce:"
+
 # Rate limiting
 RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
-RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-RATE_LIMIT_PERIOD = int(os.getenv("RATE_LIMIT_PERIOD", "60"))  # seconds
+RATE_LIMIT_REQUESTS = 100
+RATE_LIMIT_PERIOD = 60  # segundos
+
+# JWT settings
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+JWT_ALGORITHM = "HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Database connection constants
 class DatabaseConfig:
@@ -129,3 +138,7 @@ print(f"  • Port: {PORT}")
 print(f"  • CORS Origins: {ALLOWED_ORIGINS}")
 print(f"  • Database URL set: {bool(DATABASE_URL)}")
 print(f"  • Docs enabled: {ENABLE_DOCS}")
+
+# 🔥 AÑADIDO AL FINAL - después de que CacheConfig esté definido
+CACHE_TTL = CacheConfig.DEFAULT_TTL
+print(f"  • Cache TTL: {CACHE_TTL} seconds")
