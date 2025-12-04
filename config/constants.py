@@ -1,24 +1,73 @@
 """
-Application Constants
+Application Constants - Versión específica para Render
 Centralized configuration constants for the entire application.
-Avoids magic numbers and provides single source of truth.
+Optimized for production deployment on Render.
 """
 import os
 from typing import List
 
 # Application metadata
-APP_NAME = "E-commerce REST API"
-APP_DESCRIPTION = "A modern e-commerce REST API with PostgreSQL, Redis, and FastAPI"
-APP_VERSION = "1.0.0"
+APP_NAME = os.getenv("APP_NAME", "E-commerce REST API")
+APP_DESCRIPTION = os.getenv("APP_DESCRIPTION", "E-commerce REST API")
+APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 
-# Server configuration
-HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", "8000"))
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+# Server configuration - CRÍTICO PARA RENDER
+HOST = "0.0.0.0"  # Siempre esto en Render
+PORT = int(os.getenv("PORT", "10000"))  # Render proporciona PORT automáticamente
+
+# Debug - DESACTIVADO en producción
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/ecommerce")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
+# Redis configuration (si usas Redis en Render)
+REDIS_HOST = os.getenv("REDIS_HOST", "")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+
+# CORS configuration - PROCESAR CORRECTAMENTE LA CADENA DE RENDER
+cors_origins_str = os.getenv("CORS_ORIGINS", "")
+ALLOWED_ORIGINS = []
+if cors_origins_str:
+    # Separar por comas y limpiar espacios
+    ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_str.split(",")]
+    print(f"✅ CORS origins loaded: {ALLOWED_ORIGINS}")
+else:
+    # Fallback a orígenes comunes
+    ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://pruebafrontend-ea20.onrender.com"
+    ]
+    print("⚠️ CORS_ORIGINS not set, using defaults")
+
+# También agregar el propio dominio de Render si está disponible
+render_url = os.getenv("RENDER_EXTERNAL_URL", "")
+if render_url and render_url not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(render_url)
+
+# API settings
+ENABLE_DOCS = os.getenv("ENABLE_DOCS", "true").lower() == "true"
+API_V1_PREFIX = "/api/v1"
+PROJECT_NAME = "E-commerce API"
+
+# Logging
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FILE = "logs/app.log"
+ERROR_LOG_FILE = "logs/error.log"
+
+# Security
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Rate limiting
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
+RATE_LIMIT_PERIOD = int(os.getenv("RATE_LIMIT_PERIOD", "60"))  # seconds
+
+# Database connection constants
 class DatabaseConfig:
     """Database connection constants"""
     DEFAULT_POOL_SIZE = 50
@@ -26,24 +75,7 @@ class DatabaseConfig:
     DEFAULT_POOL_TIMEOUT = 10  # seconds (fail fast for high concurrency)
     DEFAULT_POOL_RECYCLE = 3600  # 1 hour
 
-# Redis configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_DB = int(os.getenv("REDIS_DB", "0"))
-
-# CORS configuration
-ALLOWED_ORIGINS: List[str] = os.getenv("CORS_ORIGINS", "*").split(",")
-
-# Security
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-# API settings
-ENABLE_DOCS = os.getenv("ENABLE_DOCS", "True").lower() == "true"
-API_V1_PREFIX = "/api/v1"
-PROJECT_NAME = "E-commerce API"
-
+# Pagination-related constants
 class PaginationConfig:
     """Pagination-related constants"""
     DEFAULT_SKIP = 0
@@ -51,6 +83,7 @@ class PaginationConfig:
     MAX_LIMIT = int(os.getenv('PAGINATION_MAX_LIMIT', '1000'))
     MIN_LIMIT = 1
 
+# Cache TTL and configuration constants
 class CacheConfig:
     """Cache TTL and configuration constants"""
     # Default TTLs in seconds
@@ -60,32 +93,7 @@ class CacheConfig:
     CATEGORY_LIST_TTL = 3600  # 1 hour (rarely changes)
     CATEGORY_ITEM_TTL = 3600  # 1 hour
 
-# Logging
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-
-class LogConfig:
-    """Logging configuration constants"""
-    MAX_LOG_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
-    LOG_BACKUP_COUNT = 5
-    DEFAULT_LOG_LEVEL = LOG_LEVEL
-    LOG_FILE = "logs/app.log"
-    ERROR_LOG_FILE = "logs/error.log"
-
-# Rate limiting
-RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "True").lower() == "true"
-
-class RateLimitConfig:
-    """Rate limiting constants"""
-    GLOBAL_CALLS_PER_PERIOD = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-    GLOBAL_PERIOD_SECONDS = int(os.getenv("RATE_LIMIT_PERIOD", "60"))  # seconds
-    # Endpoint-specific limits
-    ORDER_CREATE_CALLS = 10  # requests per minute
-    ORDER_CREATE_PERIOD = 60  # seconds
-    CLIENT_CREATE_CALLS = 5  # requests per minute
-    CLIENT_CREATE_PERIOD = 60
-    REVIEW_CREATE_CALLS = 3  # requests per minute
-    REVIEW_CREATE_PERIOD = 60
-
+# Validation-related constants
 class ValidationConfig:
     """Validation-related constants"""
     # Price validation
@@ -104,6 +112,7 @@ class ValidationConfig:
     # Price comparison precision
     PRICE_EPSILON = 0.01  # For float comparison
 
+# Centralized error message templates
 class ErrorMessages:
     """Centralized error message templates"""
     INSTANCE_NOT_FOUND = "{resource} with ID {id} not found"
@@ -113,3 +122,10 @@ class ErrorMessages:
     PROTECTED_FIELD = "Cannot update protected field: {field}"
     INVALID_FIELD = "Invalid field for {model}: {field}"
     RATE_LIMIT_EXCEEDED = "Rate limit exceeded. Maximum {limit} requests per {period} seconds"
+
+# Imprimir configuración cargada
+print(f"🚀 Configuration loaded:")
+print(f"  • Port: {PORT}")
+print(f"  • CORS Origins: {ALLOWED_ORIGINS}")
+print(f"  • Database URL set: {bool(DATABASE_URL)}")
+print(f"  • Docs enabled: {ENABLE_DOCS}")
