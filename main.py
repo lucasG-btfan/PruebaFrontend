@@ -1,17 +1,16 @@
 """
 Main FastAPI application - Simple version for production.
-Uses centralized constants from simple_constants.py.
+Uses centralized constants from config.constants.py.
 """
 import logging
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request # Se añadió 'Request'
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel # Importado para los modelos de Cliente
-from typing import List # Importado para los modelos de Cliente
-
-# Importar constantes centralizadas
-from simple_constants import (
+from pydantic import BaseModel
+from typing import List
+# Importar constantes centralizadas desde config.constants
+from config.constants import (
     APP_NAME,
     APP_DESCRIPTION,
     APP_VERSION,
@@ -20,13 +19,29 @@ from simple_constants import (
     ENABLE_DOCS,
     ALLOWED_ORIGINS,
     LOG_LEVEL,
-    LOG_FORMAT
+    LOG_FILE,
+    ERROR_LOG_FILE
 )
+# Importar el router de test_controller
+from controllers.test_controller import router as test_router
 
-# Configurar logging
+# Configurar logging CORREGIDO
+app_handler = logging.FileHandler(LOG_FILE)
+error_handler = logging.FileHandler(ERROR_LOG_FILE)
+console_handler = logging.StreamHandler()
+# Configurar niveles
+app_handler.setLevel(LOG_LEVEL)
+error_handler.setLevel(logging.ERROR)  # Solo errores para este archivo
+console_handler.setLevel(LOG_LEVEL)
+# Configurar el formato
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+app_handler.setFormatter(formatter)
+error_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+# Configurar el logger raíz
 logging.basicConfig(
     level=LOG_LEVEL,
-    format=LOG_FORMAT
+    handlers=[app_handler, error_handler, console_handler]
 )
 logger = logging.getLogger(__name__)
 
@@ -56,6 +71,9 @@ app = FastAPI(
     openapi_url="/openapi.json" if ENABLE_DOCS else None,
     lifespan=lifespan
 )
+
+# Incluir el router de test_controller
+app.include_router(test_router, prefix="/api/v1", tags=["test"])
 
 # Configurar CORS
 app.add_middleware(
@@ -96,7 +114,6 @@ async def cors_test(request: Request):
 @app.options("/api/v1/cors-test")
 async def cors_test_options():
     """Handle OPTIONS request for CORS test (preflight)."""
-    # El CORSMiddleware de FastAPI maneja los encabezados de respuesta
     return {}
 
 class ClientResponse(BaseModel):
