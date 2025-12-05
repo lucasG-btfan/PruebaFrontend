@@ -22,7 +22,17 @@ from config.constants import (
     LOG_FILE,
     ERROR_LOG_FILE
 )
-# Importar el router de test_controller
+
+# Importar TODOS los routers necesarios
+from controllers.health_check import router as health_router
+from controllers.product_controller import router as product_router
+from controllers.client_controller import router as client_router
+from controllers.order_controller import router as order_router
+from controllers.order_detail_controller import router as order_detail_router
+from controllers.category_controller import router as category_router
+from controllers.bill_controller import router as bill_router
+from controllers.review_controller import router as review_router
+from controllers.address_controller import router as address_router
 from controllers.test_controller import router as test_router
 
 # Configurar logging CORREGIDO
@@ -72,7 +82,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Incluir el router de test_controller
+# Incluir TODOS los routers con sus prefijos
+app.include_router(health_router, tags=["health"])
+app.include_router(product_router, prefix="/api/v1", tags=["products"])
+app.include_router(client_router, prefix="/api/v1", tags=["clients"])
+app.include_router(order_router, prefix="/api/v1", tags=["orders"])
+app.include_router(order_detail_router, prefix="/api/v1", tags=["order-details"])
+app.include_router(category_router, prefix="/api/v1", tags=["categories"])
+app.include_router(bill_router, prefix="/api/v1", tags=["bills"])
+app.include_router(review_router, prefix="/api/v1", tags=["reviews"])
+app.include_router(address_router, prefix="/api/v1", tags=["addresses"])
 app.include_router(test_router, prefix="/api/v1", tags=["test"])
 
 # Configurar CORS
@@ -94,7 +113,7 @@ async def root():
         "health": "/health_check"
     }
 
-# Health check endpoint
+# Health check endpoint (mantener por compatibilidad)
 @app.get("/health_check")
 async def health_check():
     return {"status": "healthy", "timestamp": "now"}
@@ -115,30 +134,3 @@ async def cors_test(request: Request):
 async def cors_test_options():
     """Handle OPTIONS request for CORS test (preflight)."""
     return {}
-
-class ClientResponse(BaseModel):
-    id_key: int
-    name: str
-    lastname: str
-    email: str
-
-class ClientListResponse(BaseModel):
-    items: List[ClientResponse]
-    total: int
-    page: int
-    size: int
-    pages: int
-
-# Simple clients endpoint
-@app.get("/api/v1/clients", response_model=ClientListResponse)
-async def get_clients(skip: int = 0, limit: int = 100):
-    return {
-        "items": [
-            {"id_key": 1, "name": "John", "lastname": "Doe", "email": "john@example.com"},
-            {"id_key": 2, "name": "Jane", "lastname": "Smith", "email": "jane@example.com"}
-        ],
-        "total": 2,
-        "page": 1,
-        "size": limit,
-        "pages": 1
-    }
