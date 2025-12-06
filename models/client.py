@@ -1,4 +1,4 @@
-# models/client.py
+# models/client.py - OPCIÓN ALTERNATIVA: Cambiar nombre a Client
 """
 Client model for storing client information.
 """
@@ -9,7 +9,7 @@ from sqlalchemy.sql import func
 from models.base_model import BaseModel
 
 
-class ClientModel(BaseModel):
+class Client(BaseModel):  # <-- Cambiar de ClientModel a Client
     """
     Client model representing users/customers.
     """

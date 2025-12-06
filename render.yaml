@@ -1,15 +1,16 @@
 services:
   - type: web
     name: ecommerce-api
-    runtime: python
+    env: python
     buildCommand: |
       pip install --upgrade pip &&
-      pip install -r requirements.txt
-    startCommand: python run_production.py
+      pip install -r requirements.txt &&
+      python initialize_database.py
+    startCommand: gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: ecommerce_db
+          name: ecommerce_db_sbeb
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.0

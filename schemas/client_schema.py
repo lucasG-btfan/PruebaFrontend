@@ -47,6 +47,10 @@ class ClientResponseSchema(ClientBaseSchema):
         from_attributes = True
 
 
+# ALIAS para compatibilidad con importaciones existentes
+ClientSchema = ClientResponseSchema  # <-- AÑADIR ESTO
+
+
 class ClientListResponseSchema(BaseModel):
     """Schema for list of clients response."""
     items: List[ClientResponseSchema]
