@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
+
 # Importar constantes centralizadas desde config.constants
 from config.constants import (
     APP_NAME,
@@ -39,15 +40,18 @@ from controllers.test_controller import router as test_router
 app_handler = logging.FileHandler(LOG_FILE)
 error_handler = logging.FileHandler(ERROR_LOG_FILE)
 console_handler = logging.StreamHandler()
+
 # Configurar niveles
 app_handler.setLevel(LOG_LEVEL)
 error_handler.setLevel(logging.ERROR)  # Solo errores para este archivo
 console_handler.setLevel(LOG_LEVEL)
+
 # Configurar el formato
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 app_handler.setFormatter(formatter)
 error_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
+
 # Configurar el logger raíz
 logging.basicConfig(
     level=LOG_LEVEL,
@@ -117,6 +121,103 @@ async def root():
 @app.get("/health_check")
 async def health_check():
     return {"status": "healthy", "timestamp": "now"}
+
+@app.get("/api/v1/products")
+async def get_products(skip: int = 0, limit: int = 100):
+    """Get all products (mock data for now)."""
+    products = [
+        {
+            "id": 1,
+            "name": "Laptop Gaming Pro",
+            "price": 1299.99,
+            "description": "High-performance gaming laptop with RTX 4070",
+            "image_url": "https://picsum.photos/300/200?random=1",
+            "stock": 15,
+            "category": "Electronics"
+        },
+        {
+            "id": 2,
+            "name": "Wireless Mouse",
+            "price": 49.99,
+            "description": "Ergonomic wireless mouse with RGB lighting",
+            "image_url": "https://picsum.photos/300/200?random=2",
+            "stock": 42,
+            "category": "Accessories"
+        },
+        {
+            "id": 3,
+            "name": "Mechanical Keyboard",
+            "price": 89.99,
+            "description": "RGB mechanical keyboard with blue switches",
+            "image_url": "https://picsum.photos/300/200?random=3",
+            "stock": 23,
+            "category": "Accessories"
+        },
+        {
+            "id": 4,
+            "name": "4K Monitor",
+            "price": 399.99,
+            "description": "27-inch 4K UHD monitor with HDR",
+            "image_url": "https://picsum.photos/300/200?random=4",
+            "stock": 8,
+            "category": "Electronics"
+        },
+        {
+            "id": 5,
+            "name": "Gaming Headset",
+            "price": 79.99,
+            "description": "7.1 Surround Sound gaming headset",
+            "image_url": "https://picsum.photos/300/200?random=5",
+            "stock": 32,
+            "category": "Accessories"
+        }
+    ]
+    return products[skip:skip + limit]
+
+@app.get("/api/v1/clients")
+async def get_clients(skip: int = 0, limit: int = 100):
+    """Get all clients (mock data for now)."""
+    clients = [
+        {
+            "id": 1,
+            "name": "Juan Pérez",
+            "email": "juan@example.com",
+            "phone": "+1234567890",
+            "created_at": "2024-01-15T10:30:00Z"
+        },
+        {
+            "id": 2,
+            "name": "María García",
+            "email": "maria@example.com",
+            "phone": "+0987654321",
+            "created_at": "2024-01-16T14:20:00Z"
+        }
+    ]
+    return clients[skip:skip + limit]
+
+@app.get("/api/v1/orders")
+async def get_orders(skip: int = 0, limit: int = 100):
+    """Get all orders (mock data for now)."""
+    orders = [
+        {
+            "id": 1,
+            "client_id": 1,
+            "client_name": "Juan Pérez",
+            "total_amount": 1299.99,
+            "status": "completed",
+            "created_at": "2024-01-20T09:15:00Z"
+        },
+        {
+            "id": 2,
+            "client_id": 2,
+            "client_name": "María García",
+            "total_amount": 139.98,
+            "status": "pending",
+            "created_at": "2024-01-21T11:45:00Z"
+        }
+    ]
+    return orders[skip:skip + limit]
+# --- FIN ENDPOINTS DE EJEMPLO ---
 
 @app.get("/api/v1/cors-test")
 async def cors_test(request: Request):
