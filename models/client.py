@@ -9,7 +9,7 @@ from sqlalchemy.sql import func
 from models.base_model import BaseModel
 
 
-class Client(BaseModel):  # <-- Cambiar de ClientModel a Client
+class ClientModel(BaseModel):  # <-- Cambiar de ClientModel a Client
     """
     Client model representing users/customers.
     """

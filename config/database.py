@@ -1,28 +1,26 @@
-# config/database.py
+# config/database.py - VERSIÓN SIMPLIFICADA
 """
-Database configuration wrapper for Render.
-This file redirects imports to database_render.py for compatibility.
+Database configuration wrapper.
 """
-import sys
 import os
 
-print("🔄 Redirigiendo imports a database_render.py...")
-
 # Importar todo desde database_render
-from .database_render import *
+from .database_render import (
+    engine,
+    SessionLocal,
+    get_db,
+    create_tables,
+    check_connection,
+    initialize_models
+)
 
-# Para compatibilidad con alembic y otros archivos
-DATABASE_URI = os.getenv("DATABASE_URL", "")
+# Obtener DATABASE_URL del entorno
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+DATABASE_URI = DATABASE_URL  # Alias para compatibilidad
 
-# Si no está definido, usar la de database_render
-if not DATABASE_URI and 'DATABASE_URL' in globals():
-    DATABASE_URI = DATABASE_URL
-
-# Si todavía no está definido, usar la variable local
-if not DATABASE_URI:
-    DATABASE_URI = "postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a.ohio-postgres.render.com/ecommerce_db_sbeb"
-
-print(f"✅ Database config loaded: {DATABASE_URI[:50]}...")
+if not DATABASE_URL:
+    print("⚠️ DATABASE_URL environment variable is not set")
+    print("📝 Using connection from database_render.py")
 
 __all__ = [
     'engine',
@@ -31,6 +29,6 @@ __all__ = [
     'create_tables',
     'check_connection',
     'initialize_models',
+    'DATABASE_URL',
     'DATABASE_URI',
-    'DATABASE_URL'
 ]

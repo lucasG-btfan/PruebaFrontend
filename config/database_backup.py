@@ -1,32 +1,28 @@
-# config/database_render.py
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import NullPool  # Importar NullPool para Render
 import logging
+from sqlalchemy import create_engine, inspect  # Importar inspect
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.pool import NullPool
 
 logger = logging.getLogger(__name__)
 
-# ✅ CRÍTICO: Usar la variable de entorno correcta para Render
-# En Render, la variable se llama DATABASE_URL (no SQLALCHEMY_DATABASE_URL)
+# Obtener la URL de la base de datos
 database_url = os.getenv("DATABASE_URL")
-
-# Si DATABASE_URL no existe, usar SQLALCHEMY_DATABASE_URL o un valor por defecto
 if not database_url:
     database_url = os.getenv("SQLALCHEMY_DATABASE_URL", "postgresql://user:pass@localhost:5432/dbname")
 
-# ✅ CORREGIR: Postgres en Render usa postgres:// pero SQLAlchemy necesita postgresql://
+# Corregir el formato de la URL para PostgreSQL
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 logger.info(f"Database URL configured: {database_url[:50]}...")
 
-# ✅ IMPORTANTE para Render: Usar NullPool para evitar problemas de conexión
+# Configuración del engine para Render
 engine = create_engine(
     database_url,
-    echo=False,  # Cambiar a True solo para debugging local
-    poolclass=NullPool,  # ✅ CRÍTICO para Render
-    pool_pre_ping=True,  # Verificar conexión antes de usar
+    echo=False,
+    poolclass=NullPool,
+    pool_pre_ping=True,
     connect_args={
         "connect_timeout": 10,
         "keepalives": 1,
@@ -47,6 +43,20 @@ def get_db():
     finally:
         db.close()
 
+def initialize_models():
+    """
+    Placeholder para inicializar modelos.
+    En un proyecto real, aquí podrías importar todos los modelos para asegurarte de que estén registrados.
+    """
+    try:
+        # Importar todos los modelos para que SQLAlchemy los registre
+        from models import BaseModel  # Asegúrate de que este import funcione
+        logger.info("✅ Models initialized successfully")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize models: {e}")
+        return False
+
 def create_tables():
     """Create all database tables."""
     try:
@@ -57,6 +67,7 @@ def create_tables():
         logger.info("🔨 Creating database tables...")
         Base.metadata.create_all(bind=engine)
 
+        # Usar inspect para verificar las tablas creadas
         inspector = inspect(engine)
         created_tables = inspector.get_table_names()
         logger.info(f"✅ Tables created successfully: {created_tables}")
@@ -73,7 +84,7 @@ def create_tables():
     except Exception as e:
         logger.error(f"❌ Failed to create database tables: {e}")
         return False
-    
+
 def check_connection():
     """Check if database is accessible"""
     try:

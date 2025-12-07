@@ -31,7 +31,7 @@ except ImportError as e:
 
 # Test 3: Modelos específicos
 try:
-    from models.client import Client
+    from models.client import ClientModel
     from models.bill import Bill
     print("✅ Modelos Client y Bill importados correctamente")
 except ImportError as e:

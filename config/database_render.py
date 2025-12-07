@@ -1,4 +1,3 @@
-# config/database_render.py
 import os
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -7,18 +6,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ✅ Importar modelos para inicialización
 try:
-    # Importar todos los modelos
     from models.base_model import Base
-    from models.client import Client
-    from models.bill import Bill
-    from models.order import Order
-    from models.order_detail import OrderDetail
-    from models.product import Product
-    from models.category import Category
-    from models.address import Address
-    from models.review import Review
+    from models.client import ClientModel
+    from models.bill import BillModel
+    from models.order import OrderModel
+    from models.order_detail import OrderDetailModel
+    from models.product import ProductModel
+    from models.category import CategoryModel
+    from models.address import AddressModel
+    from models.review import ReviewModel
     
     models_imported = True
     logger.info("✅ Models imported successfully")
@@ -26,26 +23,31 @@ except ImportError as e:
     models_imported = False
     logger.warning(f"⚠️ Could not import models: {e}")
 
-# ✅ Obtener URL de base de datos
-database_url = os.getenv("DATABASE_URL")
+# ✅ Obtener URL de base de datos - CORREGIR ESTO
+database_url = os.getenv("DATABASE_URL", "").strip()
 
-# Si DATABASE_URL no existe, usar SQLALCHEMY_DATABASE_URL o un valor por defecto
+# Si DATABASE_URL está vacío, usar el valor por defecto
 if not database_url:
-    database_url = os.getenv("SQLALCHEMY_DATABASE_URL", "postgresql://user:pass@localhost:5432/dbname")
+    logger.warning("⚠️ DATABASE_URL environment variable is empty or not set")
+    # Usar la URL directa como fallback
+    database_url = "postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a.ohio-postgres.render.com/ecommerce_db_sbeb"
+    logger.info("📝 Using default database URL")
 
 # ✅ CORREGIR: Postgres en Render usa postgres:// pero SQLAlchemy necesita postgresql://
-if database_url and database_url.startswith("postgres://"):
+if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
+    logger.info("🔄 Fixed database URL protocol")
 
-logger.info(f"Database URL configured: {database_url[:50]}...")
+logger.info(f"🔗 Database URL: {database_url[:50]}...")
 
-# ✅ Crear engine
+# ✅ Crear engine CON SSL - ESTO ES CLAVE
 engine = create_engine(
     database_url,
-    echo=False,  # Cambiar a True solo para debugging local
-    poolclass=NullPool,  # ✅ CRÍTICO para Render
-    pool_pre_ping=True,  # Verificar conexión antes de usar
+    echo=False,  # Cambiar a True solo para debugging
+    poolclass=NullPool,  # ✅ Para Render
+    pool_pre_ping=True,
     connect_args={
+        "sslmode": "require",  # ✅ SSL REQUERIDO para Render
         "connect_timeout": 10,
         "keepalives": 1,
         "keepalives_idle": 30,
@@ -67,11 +69,10 @@ def get_db():
 def initialize_models():
     """Initialize all models to ensure they're registered with Base."""
     try:
-        # Los modelos ya se importaron al inicio del archivo
         if not models_imported:
             logger.error("❌ Models were not imported correctly")
             return False
-        
+
         # Verificar que Base tenga metadata
         if hasattr(Base, 'metadata') and hasattr(Base.metadata, 'tables'):
             logger.info(f"✅ Models initialized. Tables registered: {list(Base.metadata.tables.keys())}")
@@ -79,7 +80,6 @@ def initialize_models():
         else:
             logger.error("❌ Base metadata not properly configured")
             return False
-            
     except Exception as e:
         logger.error(f"❌ Error initializing models: {e}")
         return False
@@ -122,7 +122,7 @@ def check_connection():
         logger.error(f"❌ Database connection check: FAILED - {str(e)}")
         return False
 
-# ✅ Crear Base si no se importó de los modelos
+# ✅ Crear Base si no se importó de los modelos (no debería ser necesario si Base está en base_model.py)
 if not models_imported:
     Base = declarative_base()
     logger.warning("⚠️ Using declarative_base() because models were not imported")

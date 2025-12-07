@@ -1,3 +1,4 @@
+# models/__init__.py - VERSIÓN CORREGIDA
 """
 Initialize models package and ensure all models are imported.
 This helps SQLAlchemy discover all models.
@@ -18,9 +19,9 @@ from .review import ReviewModel
 # Lista de todos los modelos para facilitar importaciones
 __all__ = [
     'Base',
-    'Base',
-    'Client',
-    'BillModel',
+    'BaseModel',
+    'ClientModel',
+    'BillModel',  
     'OrderModel',
     'OrderDetailModel',
     'ProductModel',

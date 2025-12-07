@@ -15,7 +15,7 @@ This helps SQLAlchemy discover all models.
 from .base_model import Base, BaseModel
 
 # Importar todos los modelos para que se registren con Base
-from .client import Client
+from .client import ClientModel
 from .bill import Bill
 from .order import Order
 from .order_detail import OrderDetail
@@ -28,7 +28,7 @@ from .review import Review
 __all__ = [
     'Base',
     'BaseModel',
-    'Client',
+    'ClientModel',
     'Bill',
     'Order',
     'OrderDetail',
