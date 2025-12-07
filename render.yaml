@@ -2,11 +2,13 @@ services:
   - type: web
     name: ecommerce-api
     env: python
+    region: ohio
+    plan: free
     buildCommand: |
       pip install --upgrade pip &&
       pip install -r requirements.txt &&
-      python initialize_database.py
-    startCommand: gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
+      echo "✅ Build complete"
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -17,4 +19,14 @@ services:
       - key: PYTHONUNBUFFERED
         value: 1
       - key: PORT
-        value: 8000
+        value: 10000
+      - key: CORS_ORIGINS
+        value: https://pruebafrontend-ea20.onrender.com,http://localhost:5173
+      - key: DEBUG
+        value: "false"
+      - key: ENABLE_DOCS
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
+    healthCheckPath: /health_check  # Asegúrate de que este endpoint exista en tu app
+    autoDeploy: true

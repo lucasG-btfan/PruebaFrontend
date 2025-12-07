@@ -1,237 +1,156 @@
-"""
-Main FastAPI application - Simple version for production.
-Uses centralized constants from config.constants.py.
-"""
-import logging
+# main.py - OPTIMIZADO PARA RENDER
 import os
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+import logging
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List
+from contextlib import asynccontextmanager
 
-# Importar constantes centralizadas desde config.constants
-from config.constants import (
-    APP_NAME,
-    APP_DESCRIPTION,
-    APP_VERSION,
-    HOST,
-    PORT,
-    ENABLE_DOCS,
-    ALLOWED_ORIGINS,
-    LOG_LEVEL,
-    LOG_FILE,
-    ERROR_LOG_FILE
-)
-
-# Importar TODOS los routers necesarios
-from controllers.health_check import router as health_router
-from controllers.product_controller import router as product_router
-from controllers.client_controller import router as client_router
-from controllers.order_controller import router as order_router
-from controllers.order_detail_controller import router as order_detail_router
-from controllers.category_controller import router as category_router
-from controllers.bill_controller import router as bill_router
-from controllers.review_controller import router as review_router
-from controllers.address_controller import router as address_router
-from controllers.test_controller import router as test_router
-
-# Configurar logging CORREGIDO
-app_handler = logging.FileHandler(LOG_FILE)
-error_handler = logging.FileHandler(ERROR_LOG_FILE)
-console_handler = logging.StreamHandler()
-
-# Configurar niveles
-app_handler.setLevel(LOG_LEVEL)
-error_handler.setLevel(logging.ERROR)  # Solo errores para este archivo
-console_handler.setLevel(LOG_LEVEL)
-
-# Configurar el formato
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-app_handler.setFormatter(formatter)
-error_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-# Configurar el logger raíz
+# Configurar logging PRIMERO
 logging.basicConfig(
-    level=LOG_LEVEL,
-    handlers=[app_handler, error_handler, console_handler]
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
+logger.info("=" * 60)
+logger.info("🚀 INITIALIZING ECOMMERCE BACKEND ON RENDER")
+logger.info("=" * 60)
+
+# 1. Configurar variables de entorno para Render
+if "RENDER" in os.environ:
+    logger.info("🌐 Running in Render environment")
+    # Render ya proporciona DATABASE_URL automáticamente
+else:
+    logger.info("💻 Running in local environment")
+    # Para desarrollo local, usar URL directa
+    os.environ.setdefault(
+        'DATABASE_URL', 
+        'postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a.ohio-postgres.render.com/ecommerce_db_sbeb'
+    )
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager."""
-    logger.info("🚀 Starting E-commerce API...")
-    # Intentar conectar a base de datos
+    """Lifespan events for FastAPI app"""
+    # Startup
+    logger.info("🔄 Starting up application...")
+    
     try:
-        from config.database_render import check_connection, create_tables
-        if check_connection():
-            logger.info("✅ Database connected")
-            create_tables()
-            logger.info("✅ Tables created/verified")
+        # Importar y verificar configuración
+        logger.info("📦 Importing configuration...")
+        from config import engine
+        
+        # Probar conexión a la base de datos
+        logger.info("🔗 Testing database connection...")
+        from sqlalchemy import text
+        
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            logger.info(f"✅ Database connection test: {result.scalar()}")
+            
+            # Verificar tablas
+            result = conn.execute(text("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"))
+            table_count = result.scalar()
+            logger.info(f"📊 Database has {table_count} tables")
+            
     except Exception as e:
-        logger.warning(f"⚠️ Database setup skipped: {e}")
+        logger.error(f"❌ Startup error: {e}")
+        # No fallar completamente, solo loguear el error
+    
+    logger.info("✅ Application startup complete")
     yield
-    logger.info("👋 Shutting down...")
+    
+    # Shutdown
+    logger.info("👋 Shutting down application...")
 
-# Crear aplicación FastAPI
+# Crear la aplicación FastAPI
 app = FastAPI(
-    title=APP_NAME,
-    description=APP_DESCRIPTION,
-    version=APP_VERSION,
-    docs_url="/docs" if ENABLE_DOCS else None,
-    redoc_url="/redoc" if ENABLE_DOCS else None,
-    openapi_url="/openapi.json" if ENABLE_DOCS else None,
+    title="Ecommerce Backend API",
+    description="API para sistema de ecommerce",
+    version="2.0.0",
+    docs_url="/docs" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,
+    redoc_url="/redoc" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,
     lifespan=lifespan
 )
 
-# Incluir TODOS los routers con sus prefijos
-app.include_router(health_router, tags=["health"])
-app.include_router(product_router, prefix="/api/v1", tags=["products"])
-app.include_router(client_router, prefix="/api/v1", tags=["clients"])
-app.include_router(order_router, prefix="/api/v1", tags=["orders"])
-app.include_router(order_detail_router, prefix="/api/v1", tags=["order-details"])
-app.include_router(category_router, prefix="/api/v1", tags=["categories"])
-app.include_router(bill_router, prefix="/api/v1", tags=["bills"])
-app.include_router(review_router, prefix="/api/v1", tags=["reviews"])
-app.include_router(address_router, prefix="/api/v1", tags=["addresses"])
-app.include_router(test_router, prefix="/api/v1", tags=["test"])
-
 # Configurar CORS
+cors_origins = os.getenv("CORS_ORIGINS", "https://pruebafrontend-ea20.onrender.com,http://localhost:5173").split(",")
+logger.info(f"🌍 CORS Origins configured: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
-# Root endpoint
+# Rutas básicas
 @app.get("/")
 async def root():
     return {
-        "message": "E-commerce REST API",
-        "version": APP_VERSION,
-        "docs": "/docs",
-        "health": "/health_check"
+        "service": "Ecommerce Backend API",
+        "status": "online",
+        "version": "2.0.0",
+        "environment": "production" if "RENDER" in os.environ else "development",
+        "endpoints": {
+            "docs": "/docs",
+            "health": "/health",
+            "api_v1": "/api/v1"
+        }
     }
 
-# Health check endpoint (mantener por compatibilidad)
-@app.get("/health_check")
+@app.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": "now"}
-
-@app.get("/api/v1/products")
-async def get_products(skip: int = 0, limit: int = 100):
-    """Get all products (mock data for now)."""
-    products = [
-        {
-            "id": 1,
-            "name": "Laptop Gaming Pro",
-            "price": 1299.99,
-            "description": "High-performance gaming laptop with RTX 4070",
-            "image_url": "https://picsum.photos/300/200?random=1",
-            "stock": 15,
-            "category": "Electronics"
-        },
-        {
-            "id": 2,
-            "name": "Wireless Mouse",
-            "price": 49.99,
-            "description": "Ergonomic wireless mouse with RGB lighting",
-            "image_url": "https://picsum.photos/300/200?random=2",
-            "stock": 42,
-            "category": "Accessories"
-        },
-        {
-            "id": 3,
-            "name": "Mechanical Keyboard",
-            "price": 89.99,
-            "description": "RGB mechanical keyboard with blue switches",
-            "image_url": "https://picsum.photos/300/200?random=3",
-            "stock": 23,
-            "category": "Accessories"
-        },
-        {
-            "id": 4,
-            "name": "4K Monitor",
-            "price": 399.99,
-            "description": "27-inch 4K UHD monitor with HDR",
-            "image_url": "https://picsum.photos/300/200?random=4",
-            "stock": 8,
-            "category": "Electronics"
-        },
-        {
-            "id": 5,
-            "name": "Gaming Headset",
-            "price": 79.99,
-            "description": "7.1 Surround Sound gaming headset",
-            "image_url": "https://picsum.photos/300/200?random=5",
-            "stock": 32,
-            "category": "Accessories"
-        }
-    ]
-    return products[skip:skip + limit]
-
-@app.get("/api/v1/clients")
-async def get_clients(skip: int = 0, limit: int = 100):
-    """Get all clients (mock data for now)."""
-    clients = [
-        {
-            "id": 1,
-            "name": "Juan Pérez",
-            "email": "juan@example.com",
-            "phone": "+1234567890",
-            "created_at": "2024-01-15T10:30:00Z"
-        },
-        {
-            "id": 2,
-            "name": "María García",
-            "email": "maria@example.com",
-            "phone": "+0987654321",
-            "created_at": "2024-01-16T14:20:00Z"
-        }
-    ]
-    return clients[skip:skip + limit]
-
-@app.get("/api/v1/orders")
-async def get_orders(skip: int = 0, limit: int = 100):
-    """Get all orders (mock data for now)."""
-    orders = [
-        {
-            "id": 1,
-            "client_id": 1,
-            "client_name": "Juan Pérez",
-            "total_amount": 1299.99,
-            "status": "completed",
-            "created_at": "2024-01-20T09:15:00Z"
-        },
-        {
-            "id": 2,
-            "client_id": 2,
-            "client_name": "María García",
-            "total_amount": 139.98,
-            "status": "pending",
-            "created_at": "2024-01-21T11:45:00Z"
-        }
-    ]
-    return orders[skip:skip + limit]
-# --- FIN ENDPOINTS DE EJEMPLO ---
-
-@app.get("/api/v1/cors-test")
-async def cors_test(request: Request):
-    """Test endpoint to verify CORS is working by checking the Origin header."""
-    request_origin = request.headers.get("origin")
+    """Health check endpoint for Render"""
+    try:
+        from config import engine
+        from sqlalchemy import text
+        
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            db_status = "connected"
+    except Exception:
+        db_status = "disconnected"
+    
     return {
-        "message": "CORS test endpoint",
-        "request_origin": request_origin,
-        "allowed_origins": ALLOWED_ORIGINS,
-        "cors_working": request_origin in ALLOWED_ORIGINS if request_origin else False,
+        "status": "healthy",
+        "database": db_status,
         "timestamp": "now"
     }
 
-@app.options("/api/v1/cors-test")
-async def cors_test_options():
-    """Handle OPTIONS request for CORS test (preflight)."""
-    return {}
+# Importar y registrar routers
+logger.info("🔄 Loading API routers...")
+
+try:
+    from controllers.health_check import router as health_router
+    app.include_router(health_router, prefix="/api", tags=["Health"])
+    logger.info("✅ Health router loaded")
+except Exception as e:
+    logger.warning(f"⚠️ Health router not loaded: {e}")
+
+try:
+    from controllers.client_controller import router as client_router
+    app.include_router(client_router, prefix="/api/v1", tags=["Clients"])
+    logger.info("✅ Client router loaded")
+except Exception as e:
+    logger.warning(f"⚠️ Client router not loaded: {e}")
+
+logger.info("✅ All routers loaded successfully")
+logger.info("=" * 60)
+logger.info(f"🌐 Server ready at: http://0.0.0.0:{os.getenv('PORT', '10000')}")
+logger.info("=" * 60)
+
+# Para desarrollo local
+if __name__ == "__main__":
+    import uvicorn
+    
+    port = int(os.getenv("PORT", "8000"))
+    
+    logger.info(f"🚀 Starting local server on port {port}...")
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False,  # Desactivado en producción
+        access_log=True
+    )
