@@ -93,9 +93,9 @@ from controllers.product_controller import router as product_router
 from controllers.order_controller import router as order_router
 from controllers.bill_controller import router as bill_router
 
-app.include_router(product_router, prefix="/api/v1")
-app.include_router(order_router, prefix="/api/v1")
-app.include_router(bill_router, prefix="/api/v1")
+app.include_router(product_router, prefix="/api/v1/products")
+app.include_router(order_router, prefix="/api/v1/orders")
+app.include_router(bill_router, prefix="/api/v1/bills")
 
 if __name__ == "__main__":
     import uvicorn
