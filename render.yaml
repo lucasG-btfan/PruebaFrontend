@@ -1,7 +1,6 @@
-# render.yaml completo y funcional:
 services:
   - type: web
-    name: ecommerce-backend
+    name: ecommerce-api-v2  # ⬅️ NOMBRE NUEVO Y ÚNICO
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -18,10 +17,6 @@ services:
         value: "true"
       - key: PYTHONUNBUFFERED
         value: "1"
-      - key: DEBUG
-        value: "false"
-      - key: ENABLE_DOCS
-        value: "true"
-    healthCheckPath: /
+    healthCheckPath: /health
     healthCheckTimeout: 5
     autoDeploy: true
