@@ -92,11 +92,12 @@ async def health_check():
 from controllers.product_controller import router as product_router
 from controllers.order_controller import router as order_router
 from controllers.bill_controller import router as bill_router
+from controllers.client_controller import router as client_router
 
 app.include_router(product_router, prefix="/api/v1/products")
 app.include_router(order_router, prefix="/api/v1/orders")
 app.include_router(bill_router, prefix="/api/v1/bills")
-
+app.include_router(client_router, prefix="/api/v1/clients")
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 10000))
