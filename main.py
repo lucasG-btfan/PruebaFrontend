@@ -25,13 +25,18 @@ def get_cors_origins():
         origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
     else:
         origins = [
-            "http://localhost:3000",  # ← AÑADE ESTO
+            "http://localhost:3000",
             "http://localhost:5173",
-            "https://pruebafrontend-ea20.onrender.com"
+            "https://pruebafrontend-ea20.onrender.com",
+            "https://comercio-digital.onrender.com"  # ← AÑADE TU PROPIO BACKEND
         ]
     
-    # Permitir TODO en desarrollo (opcional, solo para testing)
-    origins.append("*")  # ← AÑADE ESTO PARA TESTING
+    # En desarrollo, permite más orígenes
+    origins.extend([
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ])
     
     logger.info(f"CORS origins configured: {origins}")
     return origins
