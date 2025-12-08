@@ -198,7 +198,7 @@ logger.info("=" * 60)
 # Para desarrollo local
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "8000"))
+    port = int(os.getenv("PORT", "10000"))
     logger.info(f"🚀 Starting local server on port {port}...")
     uvicorn.run(
         "main:app",

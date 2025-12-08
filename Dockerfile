@@ -20,7 +20,7 @@ COPY . .
 RUN mkdir -p logs
 
 # Exponer el puerto
-EXPOSE 10000
+EXPOSE 8000
 
 # Configurar variables de entorno para producción
 ENV PYTHONDONTWRITEBYTECODE=1 \

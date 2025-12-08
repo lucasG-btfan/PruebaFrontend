@@ -56,7 +56,7 @@ RUN useradd -m -u 1000 appuser && \
 USER appuser
 
 # Exponer puerto (Render usa el puerto que defines en su dashboard)
-EXPOSE 8000
+EXPOSE 10000
 
 # Health check (opcional, pero útil para Render)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
