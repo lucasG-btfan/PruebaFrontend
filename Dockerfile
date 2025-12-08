@@ -32,4 +32,4 @@ COPY --chown=appuser:appuser . .
 USER appuser
 
 # 8. Comando de inicio ÚNICO y SIMPLE
-CMD ["python", "server.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]

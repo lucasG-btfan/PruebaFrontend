@@ -41,7 +41,6 @@ mock_products = [
     }
 ]
 
-# Router para productos
 router = APIRouter(
     prefix="/api/v1/products",
     tags=["Products"],
@@ -56,10 +55,6 @@ async def get_products(
 ) -> Dict[str, Any]:
     """
     Obtener lista de productos con paginación y opción de búsqueda.
-
-    - **skip**: Número de productos a saltar (para paginación).
-    - **limit**: Número máximo de productos a devolver (1-100).
-    - **search**: Término de búsqueda opcional (filtra por nombre o descripción).
     """
     filtered_products = mock_products
     if search:
@@ -79,29 +74,12 @@ async def get_products(
         "limit": limit
     }
 
-@router.get("/{product_id}", response_model=Dict[str, Any])
-async def get_product(product_id: int) -> Dict[str, Any]:
-    """
-    Obtener un producto específico por su ID.
-
-    - **product_id**: ID del producto a buscar.
-    """
-    product = next((p for p in mock_products if p["id"] == product_id), None)
-    if not product:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Product with ID {product_id} not found"
-        )
-    return product
-
 @router.get("/search", response_model=Dict[str, Any])
 async def search_products(
     q: str = Query(..., min_length=1, description="Término de búsqueda obligatorio")
 ) -> Dict[str, Any]:
     """
     Buscar productos por término de búsqueda en nombre o descripción.
-
-    - **q**: Término de búsqueda (mínimo 1 carácter).
     """
     q_lower = q.lower()
     results = [
@@ -114,3 +92,16 @@ async def search_products(
         "query": q,
         "count": len(results)
     }
+
+@router.get("/{product_id}", response_model=Dict[str, Any])
+async def get_product(product_id: int) -> Dict[str, Any]:
+    """
+    Obtener un producto específico por su ID.
+    """
+    product = next((p for p in mock_products if p["id"] == product_id), None)
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Product with ID {product_id} not found"
+        )
+    return product
