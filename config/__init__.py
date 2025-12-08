@@ -1,50 +1,34 @@
-# config/__init__.py - SIMPLIFICADO
+# config/__init__.py
 """
 Configuration package initialization.
-Exports only what's needed to avoid import issues.
 """
-
 import os
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Exportaciones principales
 try:
-    from .database_render import (
+    # ✅ Importar desde database
+    from .database import (
         engine,
         SessionLocal,
         get_db,
         create_tables,
         check_connection,
-        initialize_models
+        initialize_models,
+        Base
     )
     
-    # Obtener DATABASE_URL
     DATABASE_URL = os.getenv("DATABASE_URL", "")
     
-    logger.info(f"✅ Database config loaded successfully")
-    logger.info(f"📦 Database URL available: {bool(DATABASE_URL)}")
-    
+    if DATABASE_URL:
+        logger.info(f"✅ Database config loaded from environment")
+    else:
+        logger.warning("⚠️ DATABASE_URL not set, using default")
+        
 except ImportError as e:
     logger.error(f"❌ Failed to import database configuration: {e}")
-    # Crear stubs para evitar crashes
-    engine = None
-    SessionLocal = None
-    get_db = None
-    DATABASE_URL = ""
-    
-    def create_tables():
-        logger.error("create_tables() called but database not configured")
-        return False
-    
-    def check_connection():
-        logger.error("check_connection() called but database not configured")
-        return False
-    
-    def initialize_models():
-        logger.error("initialize_models() called but database not configured")
-        return False
+    raise
 
 __all__ = [
     'engine',
@@ -53,5 +37,6 @@ __all__ = [
     'create_tables',
     'check_connection',
     'initialize_models',
-    'DATABASE_URL'
+    'DATABASE_URL',
+    'Base'
 ]

@@ -1,5 +1,6 @@
 import os
 import logging
+import traceback
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -29,28 +30,56 @@ else:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan events for FastAPI app"""
-    # Startup
     logger.info("🔄 Starting up application...")
+
     try:
-        # Importar y verificar configuración
-        logger.info("📦 Importing configuration...")
-        from config import engine
-        # Probar conexión a la base de datos
-        logger.info("🔗 Testing database connection...")
+        # Importar config
+        from config import check_connection, initialize_models, engine, Base
         from sqlalchemy import text
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1"))
-            logger.info(f"✅ Database connection test: {result.scalar()}")
-            # Verificar tablas
-            result = conn.execute(text("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"))
-            table_count = result.scalar()
-            logger.info(f"📊 Database has {table_count} tables")
+
+        # 1. Probar conexión
+        logger.info("🔗 Testing database connection...")
+        if check_connection():
+            logger.info("✅ Database connection successful")
+
+            # 2. Inicializar modelos
+            logger.info("📦 Initializing models...")
+            if initialize_models():
+                logger.info("✅ Models initialized")
+
+                # 3. Verificar tablas existentes
+                with engine.connect() as conn:
+                    # Contar tablas en el schema public
+                    result = conn.execute(text("""
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = 'public'
+                        ORDER BY table_name
+                    """))
+
+                    tables = [row[0] for row in result]
+                    logger.info(f"📊 Found {len(tables)} tables in database: {tables}")
+
+                    # Verificar tablas esperadas vs reales
+                    expected_tables = ['clients', 'products', 'orders', 'bills']
+                    for table in expected_tables:
+                        if table in tables:
+                            logger.info(f"   ✅ {table}: exists")
+                        else:
+                            logger.warning(f"   ⚠️ {table}: missing")
+            else:
+                logger.warning("⚠️ Models initialization had issues")
+        else:
+            logger.error("❌ Database connection failed!")
+            logger.warning("⚠️ Running in degraded mode without database")
+
     except Exception as e:
         logger.error(f"❌ Startup error: {e}")
-        # No fallar completamente, solo loguear el error
+        logger.error(traceback.format_exc())
+        logger.warning("⚠️ Continuing despite startup errors")
+
     logger.info("✅ Application startup complete")
     yield
-    # Shutdown
     logger.info("👋 Shutting down application...")
 
 # Crear la aplicación FastAPI
@@ -97,11 +126,8 @@ async def root():
 async def health_check():
     """Health check endpoint for Render"""
     try:
-        from config import engine
-        from sqlalchemy import text
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-            db_status = "connected"
+        from config import check_connection
+        db_status = "connected" if check_connection() else "disconnected"
     except Exception:
         db_status = "disconnected"
     return {
