@@ -26,4 +26,7 @@ venv/
 ENV/
 
 dist/
-build/
+build/"node_modules/" 
+".env" 
+"__pycache__/" 
+"*.pyc" 

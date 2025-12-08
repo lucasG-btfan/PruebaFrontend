@@ -95,4 +95,8 @@ app.include_router(product_router, prefix="/api/v1")
 app.include_router(order_router, prefix="/api/v1")
 app.include_router(bill_router, prefix="/api/v1")
 
-logger.info("✅ Application initialization complete")
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 10000))
+    logger.info(f"🚀 Starting server on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ecommerce-api-v2  # ⬅️ NOMBRE NUEVO Y ÚNICO
+    name: ecommerce-api-v2
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -9,8 +9,6 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false  
-      - key: PORT
-        value: "10000"
       - key: CORS_ORIGINS
         value: "https://pruebafrontend-ea20.onrender.com,http://localhost:5173,http://localhost:3000"
       - key: RENDER
@@ -18,5 +16,4 @@ services:
       - key: PYTHONUNBUFFERED
         value: "1"
     healthCheckPath: /health
-    healthCheckTimeout: 5
     autoDeploy: true
