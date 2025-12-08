@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ecommerce-api-v2
+    name: ecommerce-fastapi-final
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -8,14 +8,10 @@ services:
     plan: free
     envVars:
       - key: DATABASE_URL
-        sync: false  
-      - key: PORT
-        value: "10000"
+        value: "postgresql://ecommerce_db_pg18_user:8wj5MwKBGSfrK3ZG6vADvjT5pkc4ai7u@dpg-d4riokmr433s73a9vb70-a.ohio-postgres.render.com/ecommerce_db_pg18"
       - key: CORS_ORIGINS
         value: "http://localhost:3000,https://pruebafrontend-ea20.onrender.com"
-      - key: RENDER
-        value: "true"
-      - key: PYTHONUNBUFFERED
-        value: "1"
+      - key: PORT
+        value: "10000"
     healthCheckPath: /health
     autoDeploy: true
