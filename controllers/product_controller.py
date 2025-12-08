@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 # Mock data para desarrollo
 mock_products = [
@@ -42,48 +42,75 @@ mock_products = [
 ]
 
 # Router para productos
-router = APIRouter(prefix="/api/v1/products", tags=["Products"])
+router = APIRouter(
+    prefix="/api/v1/products",
+    tags=["Products"],
+    responses={404: {"description": "Product not found"}}
+)
 
-@router.get("", response_model=List[dict])
+@router.get("", response_model=Dict[str, Any])
 async def get_products(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
-    search: Optional[str] = None
-):
-    """Obtener lista de productos"""
-    products = mock_products
+    skip: int = Query(0, ge=0, description="Número de productos a saltar"),
+    limit: int = Query(100, ge=1, le=100, description="Número máximo de productos a devolver"),
+    search: Optional[str] = Query(None, description="Término de búsqueda en nombre o descripción")
+) -> Dict[str, Any]:
+    """
+    Obtener lista de productos con paginación y opción de búsqueda.
 
-    # Filtrar por búsqueda si se proporciona
+    - **skip**: Número de productos a saltar (para paginación).
+    - **limit**: Número máximo de productos a devolver (1-100).
+    - **search**: Término de búsqueda opcional (filtra por nombre o descripción).
+    """
+    filtered_products = mock_products
     if search:
         search_lower = search.lower()
-        products = [
-            p for p in products
-            if search_lower in p["name"].lower() or
-               search_lower in p.get("description", "").lower()
+        filtered_products = [
+            product for product in filtered_products
+            if (search_lower in product["name"].lower() or
+                search_lower in product.get("description", "").lower())
         ]
 
+    paginated_products = filtered_products[skip:skip + limit]
+
     return {
-        "products": products[skip:skip + limit],
-        "total": len(products),
+        "products": paginated_products,
+        "total": len(filtered_products),
         "skip": skip,
         "limit": limit
     }
 
-@router.get("/{product_id}", response_model=dict)
-async def get_product(product_id: int):
-    """Obtener un producto específico"""
+@router.get("/{product_id}", response_model=Dict[str, Any])
+async def get_product(product_id: int) -> Dict[str, Any]:
+    """
+    Obtener un producto específico por su ID.
+
+    - **product_id**: ID del producto a buscar.
+    """
     product = next((p for p in mock_products if p["id"] == product_id), None)
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Product with ID {product_id} not found"
+        )
     return product
 
-@router.get("/search", response_model=dict)
-async def search_products(q: str = Query(..., min_length=1)):
-    """Buscar productos"""
+@router.get("/search", response_model=Dict[str, Any])
+async def search_products(
+    q: str = Query(..., min_length=1, description="Término de búsqueda obligatorio")
+) -> Dict[str, Any]:
+    """
+    Buscar productos por término de búsqueda en nombre o descripción.
+
+    - **q**: Término de búsqueda (mínimo 1 carácter).
+    """
     q_lower = q.lower()
     results = [
-        p for p in mock_products
-        if q_lower in p["name"].lower() or
-           q_lower in p.get("description", "").lower()
+        product for product in mock_products
+        if (q_lower in product["name"].lower() or
+            q_lower in product.get("description", "").lower())
     ]
-    return {"products": results, "query": q, "count": len(results)}
+    return {
+        "products": results,
+        "query": q,
+        "count": len(results)
+    }
