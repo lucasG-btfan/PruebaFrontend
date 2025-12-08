@@ -1,12 +1,9 @@
-# .dockerignore - Exclude unnecessary files from Docker builds
-# This reduces image size and improves build performance
-
 # Python bytecode and cache
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 .Python
+*.so
 build/
 develop-eggs/
 dist/
@@ -26,26 +23,13 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Testing
-tests/
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
-coverage.xml
-*.cover
-*.log
-.hypothesis/
-pytest.ini
-.coveragerc
-
 # Git
 .git/
 .gitignore
 .gitattributes
 .github/
+.gitlab/
+.gitlab-ci.yml
 
 # Logs
 logs/
@@ -68,6 +52,7 @@ docs/
 .DS_Store
 *.sublime-project
 *.sublime-workspace
+*.iml
 
 # Environment files (CRITICAL - security)
 .env
@@ -75,15 +60,22 @@ docs/
 !.env.example
 !.env.production.example
 
-# Load testing
-load_test.py
-load_test_results.html
-locust_*.html
-locust.log
+# Testing
+tests/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.log
+.hypothesis/
+pytest.ini
+.coveragerc
 
 # CI/CD
-.github/
-.gitlab-ci.yml
 .travis.yml
 azure-pipelines.yml
 Jenkinsfile
@@ -97,25 +89,9 @@ docker-compose*.yaml
 docker-compose*.yml
 .dockerignore
 
-# Alembic (migrations should be run separately, not copied to image)
-# Uncomment if migrations are managed outside container
-# alembic.ini
-# alembic/
-
-# Temporary files
-*.tmp
-*.bak
-*.swp
-~*
-.cache/
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
 # Virtual environments (never include venv in Docker)
 venv/
+.venv/
 env/
 ENV/
 env.bak/
@@ -125,30 +101,26 @@ venv.bak/
 *.db
 *.sqlite
 *.sqlite3
+render_app.db
 
 # Redis dump files
 dump.rdb
 
-# Jupyter notebooks
-*.ipynb
-.ipynb_checkpoints/
+# Temporary files
+*.tmp
+*.bak
+.cache/
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# OS files
+Thumbs.db
+desktop.ini
 
-# Pyre type checker
-.pyre/
+# Frontend and Node.js (if not needed in backend image)
+frontend/
+node_modules/
 
-# pytype static type analyzer
-.pytype/
-
-# Analysis and audit reports
-ARCHITECTURE_AUDIT_REPORT.md
-DEPLOYMENT_ANALYSIS.md
-DEPLOYMENT_SUMMARY.md
-LOAD_TEST_SUMMARY.md
-AUDIT_AND_FIXES.md
-FIXES_*.md
-REFACTORING_SUMMARY.md
+# Load testing
+load_test.py
+load_test_results.html
+locust_*.html
+locust.log

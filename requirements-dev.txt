@@ -5,7 +5,6 @@
 pytest==7.4.3
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
-httpx==0.25.1
 
 # Load testing
 locust==2.18.0
@@ -23,3 +22,6 @@ memory-profiler==0.61.0
 # Documentation
 mkdocs==1.5.3
 mkdocs-material==9.5.3
+
+# Database migrations (Alembic)
+alembic==1.12.1
