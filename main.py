@@ -25,16 +25,13 @@ def get_cors_origins():
         origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
     else:
         origins = [
+            "http://localhost:3000",  # ← AÑADE ESTO
             "http://localhost:5173",
-            "http://localhost:3000",
             "https://pruebafrontend-ea20.onrender.com"
         ]
     
-    # Añadir el dominio propio para permitir llamadas internas
-    if "RENDER" in os.environ:
-        service_name = os.getenv("RENDER_SERVICE_NAME", "")
-        if service_name:
-            origins.append(f"https://{service_name}.onrender.com")
+    # Permitir TODO en desarrollo (opcional, solo para testing)
+    origins.append("*")  # ← AÑADE ESTO PARA TESTING
     
     logger.info(f"CORS origins configured: {origins}")
     return origins
