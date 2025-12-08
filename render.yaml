@@ -1,30 +1,27 @@
+# render.yaml completo y funcional:
 services:
   - type: web
-    name: ecommerce-backend-prod
+    name: ecommerce-backend
     env: docker
-    dockerfilePath: ./Dockerfile.production
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     region: ohio
     plan: free
     envVars:
       - key: DATABASE_URL
-        value: postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a.ohio-postgres.render.com/ecommerce_db_sbeb
+        sync: false  
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: CORS_ORIGINS
-        value: https://pruebafrontend-ea20.onrender.com,http://localhost:5173,http://localhost:3000
+        value: "https://pruebafrontend-ea20.onrender.com,http://localhost:5173,http://localhost:3000"
       - key: RENDER
         value: "true"
-      - key: LOG_LEVEL
-        value: INFO
-      - key: UVICORN_WORKERS
-        value: "1"  # Render Free tier solo soporta 1 worker
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: DEBUG
         value: "false"
       - key: ENABLE_DOCS
         value: "true"
-    healthCheckPath: /health_check  # Asegúrate de que este endpoint exista en tu app
-    healthCheckTimeout: 10
+    healthCheckPath: /
+    healthCheckTimeout: 5
     autoDeploy: true

@@ -1,108 +1,26 @@
-# =============================================
-# Python
-# =============================================
-# Entornos virtuales
-venv/
-env/
-ENV/
-.venv/
-python-env/
-# Archivos de compilación de Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-# Distribución y empaquetado
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-# Alembic (migrations)
-alembic/versions/*.py
-!alembic/versions/README
-
-# =============================================
-# IDE y Editores
-# =============================================
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.project
-.pydevproject
-.idea_modules/
-
-# =============================================
-# Sistema Operativo
-# =============================================
-.DS_Store
-Thumbs.db
-desktop.ini
-ehthumbs.db
-*.crdownload
-
-# =============================================
-# Logs y Temporales
-# =============================================
-logs/
-*.log
-git_logs.txt
-*.log.*
-log/
-tmp/
-temp/
-*~
-*.bak
-*.backup
-
-# =============================================
-# Variables de Entorno
-# =============================================
 .env
 .env.local
-.env.production
-.env*.local
-.env*.dev
-.env*.test
-
-# =============================================
-# Base de Datos
-# =============================================
-*.db
-*.sqlite3
-*.sqlite3-journal
-*.db-journal
-postgres_data/
-redis_data/
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-coverage.xml
-*.cover
-.hypothesis/
-load_test_results.html
-locust_*.html
-
-# Node.js (si aplica)
-node_modules/
+.env.development.local
+.env.test.local
+.env.production.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.git/
+.gitignore
+.vscode/
+*.log
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+.venv
+venv/
+ENV/

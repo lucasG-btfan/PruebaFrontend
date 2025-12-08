@@ -1,46 +1,21 @@
-# Dockerfile.production - VERSIÓN CORREGIDA
-FROM python:3.11-slim as builder
+#!/usr/bin/env python3
+"""
+Simple production entry point for Render
+"""
+import os
+import uvicorn
 
-# 1. Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# 2. Crear entorno virtual
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# 3. Instalar dependencias de Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# 4. Runtime stage
-FROM python:3.11-slim
-
-# 5. Copiar entorno virtual
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# 6. Instalar runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libpq5 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# 7. Crear usuario no-root
-RUN useradd -m -u 1000 appuser
-
-# 8. Crear directorio de trabajo
-WORKDIR /app
-
-# 9. Copiar código
-COPY --chown=appuser:appuser . .
-
-# 10. Cambiar a usuario no-root
-USER appuser
-
-# 11. Comando de inicio
-CMD ["python", "run_production.py"]
+if __name__ == "__main__":
+    # Configurar puerto para Render
+    port = int(os.getenv("PORT", "10000"))
+    
+    print(f"🚀 Starting server on port {port}")
+    
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False,
+        log_level="info",
+        access_log=True
+    )

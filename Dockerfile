@@ -1,36 +1,35 @@
-# Usar una imagen oficial de Python slim para reducir el tamaño
+# Dockerfile - Versión optimizada para Render
 FROM python:3.11-slim
 
-# Establecer el directorio de trabajo
+# 1. Instalar dependencias críticas
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 2. Variables de entorno
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# 3. Crear usuario no-root
+RUN useradd -m -u 1000 appuser
+
+# 4. Directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para PostgreSQL y compilación
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copiar el archivo de requisitos e instalar dependencias de Python
+# 5. Copiar requirements y instalar
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# Copiar el resto de la aplicación
-COPY . .
+# 6. Copiar todo el código
+COPY --chown=appuser:appuser . .
 
-# Crear directorio para logs
-RUN mkdir -p logs
+# 7. Cambiar usuario
+USER appuser
 
-# Exponer el puerto
-EXPOSE 8000
-
-# Configurar variables de entorno para producción
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH=/root/.local/bin:$PATH \
-    PYTHONPATH=/app \
-    UVICORN_WORKERS=4 \
-    API_HOST=0.0.0.0 \
-    API_PORT=10000 \
-    RELOAD=false
-
-# Comando para ejecutar la aplicación
-CMD ["python", "run_production.py"]
+# 8. Comando de inicio ÚNICO y SIMPLE
+CMD ["python", "server.py"]
