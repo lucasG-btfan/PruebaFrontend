@@ -1,66 +1,46 @@
-# Stage 1: Builder - Install dependencies and create virtual environment
+# Dockerfile.production - VERSIÓN CORREGIDA
 FROM python:3.11-slim as builder
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Instalar dependencias del sistema para PostgreSQL y compilación
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 1. Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Crear entorno virtual y actualizar PATH
+# 2. Crear entorno virtual
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copiar requirements e instalar dependencias
+# 3. Instalar dependencias de Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Stage 2: Runtime - Imagen minimalista para producción
+# 4. Runtime stage
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH" \
-    PYTHONPATH="/app:$PYTHONPATH" \
-    UVICORN_WORKERS=4 \
-    DB_POOL_SIZE=50 \
-    DB_MAX_OVERFLOW=100
+# 5. Copiar entorno virtual
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Instalar dependencias de runtime para PostgreSQL
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 6. Instalar runtime dependencies
+RUN apt-get update && apt-get install -y \
     libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar entorno virtual desde el builder
-COPY --from=builder /opt/venv /opt/venv
+# 7. Crear usuario no-root
+RUN useradd -m -u 1000 appuser
 
-# Configurar directorio de trabajo y logs
+# 8. Crear directorio de trabajo
 WORKDIR /app
-RUN mkdir -p /app/logs
 
-# Copiar código de la aplicación
-COPY . .
+# 9. Copiar código
+COPY --chown=appuser:appuser . .
 
-# Crear usuario no-root para seguridad
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-
-# Cambiar a usuario no-root
+# 10. Cambiar a usuario no-root
 USER appuser
 
-# Exponer puerto (Render usa el puerto que defines en su dashboard)
-EXPOSE 10000
-
-# Health check (opcional, pero útil para Render)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health_check || exit 1
-
-# Comando para ejecutar la aplicación
+# 11. Comando de inicio
 CMD ["python", "run_production.py"]
