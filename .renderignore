@@ -1,0 +1,17 @@
+# .renderignore - Archivos que Render NO debe incluir
+package.json
+package-lock.json
+yarn.lock
+node_modules/
+vite.config.js
+index.html
+src/
+public/
+*.jsx
+*.tsx
+*.js
+*.ts
+.env
+.env.local
+.git/
+.gitignore
