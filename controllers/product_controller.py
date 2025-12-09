@@ -10,7 +10,7 @@ mock_products = [
         "price": 1299.99,
         "stock": 15,
         "category_id": 1,
-        "image_url": "https://via.placeholder.com/300"
+        "image_url": "https://images.unsplash.com/photo-1716681863495-8061d6c3c49a?q=80&w=1228&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
         "id": 2,
@@ -19,7 +19,7 @@ mock_products = [
         "price": 49.99,
         "stock": 50,
         "category_id": 2,
-        "image_url": "https://via.placeholder.com/300"
+        "image_url": "https://images.unsplash.com/photo-1660491083562-d91a64d6ea9c?q=80&w=2081&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
         "id": 3,
@@ -28,7 +28,7 @@ mock_products = [
         "price": 89.99,
         "stock": 30,
         "category_id": 2,
-        "image_url": "https://via.placeholder.com/300"
+        "image_url": "https://images.unsplash.com/photo-1613442986373-af81e5c618d3?q=80&w=644&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
         "id": 4,
@@ -37,7 +37,7 @@ mock_products = [
         "price": 399.99,
         "stock": 20,
         "category_id": 3,
-        "image_url": "https://via.placeholder.com/300"
+        "image_url": "https://images.unsplash.com/photo-1593833210845-d9935371664e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     }
 ]
 
