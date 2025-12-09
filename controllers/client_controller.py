@@ -18,7 +18,7 @@ from services.client_service import ClientService
 router = APIRouter()
 
 
-@router.get("/clients", response_model=ClientListResponseSchema)
+@router.get("/", response_model=ClientListResponseSchema)
 async def get_clients(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
@@ -38,7 +38,7 @@ async def get_clients(
     )
 
 
-@router.get("/clients/{client_id}", response_model=ClientResponseSchema)
+@router.get("/{client_id}", response_model=ClientResponseSchema)
 async def get_client(client_id: int, db: Session = Depends(get_db)):
     """Get a specific client by ID."""
     service = ClientService(db)
@@ -51,14 +51,14 @@ async def get_client(client_id: int, db: Session = Depends(get_db)):
     return client
 
 
-@router.post("/clients", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
 async def create_client(client_data: ClientCreateSchema, db: Session = Depends(get_db)):
     """Create a new client."""
     service = ClientService(db)
     return service.create(client_data)
 
 
-@router.put("/clients/{client_id}", response_model=ClientResponseSchema)
+@router.put("/{client_id}", response_model=ClientResponseSchema)
 async def update_client(
     client_id: int, 
     client_data: ClientUpdateSchema, 
@@ -75,7 +75,7 @@ async def update_client(
     return updated_client
 
 
-@router.delete("/clients/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_client(client_id: int, db: Session = Depends(get_db)):
     """Delete a client (soft delete)."""
     service = ClientService(db)
