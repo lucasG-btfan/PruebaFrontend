@@ -1,86 +1,149 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from sqlalchemy.orm import Session
+from models.order import OrderModel, OrderDetailModel
+from models.enums import DeliveryMethod, Status
+from config.database import get_db
 
-# Router para órdenes
 router = APIRouter(prefix="/api/v1/orders", tags=["Orders"])
-
-# Mock data para desarrollo
-mock_orders = [
-    {
-        "id": 1,
-        "client_id": 1,
-        "total_amount": 1499.97,
-        "status": 1,  # 1=PENDING, 2=PROCESSING, 3=COMPLETED, 4=CANCELLED
-        "delivery_method": 1,  # 1=STANDARD, 2=PICKUP, 3=EXPRESS
-        "bill_id": 1,
-        "created_at": "2024-01-01T10:00:00Z",
-        "order_details": [
-            {"id": 1, "order_id": 1, "product_id": 1, "quantity": 1, "price": 1299.99},
-            {"id": 2, "order_id": 1, "product_id": 2, "quantity": 2, "price": 49.99}
-        ]
-    }
-]
 
 @router.get("", response_model=Dict[str, Any])
 async def get_orders(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
-    """Obtener lista de órdenes"""
+    """Obtener lista de órdenes desde la base de datos"""
+    orders = db.query(OrderModel).offset(skip).limit(limit).all()
     return {
-        "orders": mock_orders[skip:skip + limit],
-        "total": len(mock_orders),
+        "orders": [
+            {
+                "id": order.id_key,
+                "date": order.date,
+                "total": order.total,
+                "delivery_method": order.delivery_method.value,
+                "status": order.status.value,
+                "client_id": order.client_id,
+                "bill_id": order.bill_id,
+                "order_details": [
+                    {
+                        "product_id": detail.product_id,
+                        "quantity": detail.quantity,
+                        "price": detail.price
+                    }
+                    for detail in order.order_details
+                ]
+            }
+            for order in orders
+        ],
+        "total": db.query(OrderModel).count(),
         "skip": skip,
         "limit": limit
     }
 
 @router.post("", response_model=Dict[str, Any], status_code=201)
-async def create_order(order_data: Dict[str, Any]):
-    """Crear una nueva orden"""
+async def create_order(
+    order_data: Dict[str, Any],
+    db: Session = Depends(get_db)
+):
+    """Crear una nueva orden en la base de datos"""
     try:
         # Validación básica
-        required_fields = ["client_id", "total_amount", "delivery_method"]
+        required_fields = ["client_id", "total", "delivery_method"]
         for field in required_fields:
             if field not in order_data:
                 raise HTTPException(status_code=400, detail=f"{field} is required")
 
-        # Crear bill automáticamente si no existe
-        if 'bill_id' not in order_data or not order_data.get('bill_id'):
-            order_data['bill_id'] = len(mock_orders) + 100  # Simulación de ID de factura
+        # Crear la orden
+        new_order = OrderModel(
+            date=datetime.utcnow(),
+            total=order_data["total"],
+            delivery_method=DeliveryMethod(order_data["delivery_method"]),
+            status=Status.PENDING,  # Default
+            client_id=order_data["client_id"],
+            bill_id=order_data.get("bill_id")
+        )
+        db.add(new_order)
+        db.commit()
+        db.refresh(new_order)
 
-        new_order = {
-            "id": len(mock_orders) + 1,
-            **order_data,
-            "status": order_data.get("status", 1),  # Default PENDING
-            "created_at": datetime.utcnow().isoformat() + "Z",
-            "order_details": order_data.get("order_details", [])
-        }
+        # Crear los detalles de la orden
+        for detail in order_data.get("order_details", []):
+            order_detail = OrderDetailModel(
+                order_id=new_order.id_key,
+                product_id=detail["product_id"],
+                quantity=detail["quantity"],
+                price=detail["price"]
+            )
+            db.add(order_detail)
 
-        mock_orders.append(new_order)
+        db.commit()
 
         return {
             "message": "Order created successfully",
-            "order_id": new_order["id"],
-            "order": new_order
+            "order_id": new_order.id_key,
+            "order": {
+                "id": new_order.id_key,
+                "date": new_order.date,
+                "total": new_order.total,
+                "delivery_method": new_order.delivery_method.value,
+                "status": new_order.status.value,
+                "client_id": new_order.client_id,
+                "bill_id": new_order.bill_id,
+                "order_details": [
+                    {
+                        "product_id": detail.product_id,
+                        "quantity": detail.quantity,
+                        "price": detail.price
+                    }
+                    for detail in new_order.order_details
+                ]
+            }
         }
-
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/active", response_model=Dict[str, Any])
-async def get_active_orders():
-    """Obtener órdenes activas (status = 1)"""
-    active_orders = [o for o in mock_orders if o.get("status") == 1]
+async def get_active_orders(db: Session = Depends(get_db)):
+    """Obtener órdenes activas (status = PENDING)"""
+    active_orders = db.query(OrderModel).filter(OrderModel.status == Status.PENDING).all()
     return {
-        "active_orders": active_orders,
+        "active_orders": [
+            {
+                "id": order.id_key,
+                "date": order.date,
+                "total": order.total,
+                "status": order.status.value,
+                "client_id": order.client_id,
+                "client_name": order.client.name if order.client else "Unknown"
+            }
+            for order in active_orders
+        ],
         "count": len(active_orders)
     }
 
 @router.get("/{order_id}", response_model=Dict[str, Any])
-async def get_order(order_id: int):
+async def get_order(order_id: int, db: Session = Depends(get_db)):
     """Obtener una orden específica"""
-    order = next((o for o in mock_orders if o["id"] == order_id), None)
+    order = db.query(OrderModel).filter(OrderModel.id_key == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    return order
+    return {
+        "id": order.id_key,
+        "date": order.date,
+        "total": order.total,
+        "delivery_method": order.delivery_method.value,
+        "status": order.status.value,
+        "client_id": order.client_id,
+        "bill_id": order.bill_id,
+        "order_details": [
+            {
+                "product_id": detail.product_id,
+                "quantity": detail.quantity,
+                "price": detail.price
+            }
+            for detail in order.order_details
+        ]
+    }
