@@ -11,14 +11,14 @@ from schemas.base_schema import BaseSchema
 
 class ClientBaseSchema(BaseSchema):
     """Base schema for Client."""
-    full_name: str = Field(..., min_length=1, max_length=100, description="Full name of the client")
+    name: str = Field(..., min_length=1, max_length=100)  # ← nombre
+    lastname: str = Field(..., min_length=1, max_length=100)
     email: EmailStr = Field(..., description="Email address of the client")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
     company: Optional[str] = Field(None, max_length=100, description="Company name")
     tax_id: Optional[str] = Field(None, max_length=50, description="Tax ID")
     notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
     is_active: bool = Field(default=True, description="Whether the client is active")
-
 
 class ClientCreateSchema(ClientBaseSchema):
     """Schema for creating a new client."""
@@ -27,7 +27,8 @@ class ClientCreateSchema(ClientBaseSchema):
 
 class ClientUpdateSchema(BaseSchema):
     """Schema for updating an existing client."""
-    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=100)  # ← nombre
+    lastname: str = Field(..., min_length=1, max_length=100)
     email: Optional[EmailStr] = Field(None)
     phone: Optional[str] = Field(None, max_length=20)
     company: Optional[str] = Field(None, max_length=100)

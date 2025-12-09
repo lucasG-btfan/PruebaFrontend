@@ -16,7 +16,8 @@ class ClientModel(BaseModel):  # <-- Cambiar de ClientModel a Client
     __tablename__ = 'clients'
 
     # Basic information
-    full_name = Column(String(100), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    lastname = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False, index=True)
     phone = Column(String(20))
     
@@ -40,4 +41,4 @@ class ClientModel(BaseModel):  # <-- Cambiar de ClientModel a Client
                         cascade="all, delete-orphan", lazy="select")
 
     def __repr__(self):
-        return f"<Client(id={self.id}, email='{self.email}', full_name='{self.full_name}')>"
+        return f"<Client(id={self.id}, email='{self.email}', name='{self.name}',lastname='{self.lastname}')>"
