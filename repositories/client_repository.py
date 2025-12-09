@@ -11,3 +11,7 @@ class ClientRepository(BaseRepositoryImpl):
 
     def __init__(self, db: Session):
         super().__init__(ClientModel, ClientSchema, db)
+    
+    def find_by_email(self, email: str):
+        """Find a client by email."""
+        return self.db.query(self.model).filter(self.model.email == email).first()
