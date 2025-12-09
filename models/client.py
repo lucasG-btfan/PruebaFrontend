@@ -2,7 +2,7 @@
 """
 Client model for storing client information.
 """
-from sqlalchemy import Column, String, Boolean, DateTime, Integer
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -16,10 +16,18 @@ class ClientModel(BaseModel):  # <-- Cambiar de ClientModel a Client
     __tablename__ = 'clients'
 
     # Basic information
+    id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     lastname = Column(String(100), nullable=False)
-    email = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
     phone = Column(String(20))
+    company = Column(String(100))
+    tax_id = Column(String(50))
+    notes = Column(Text)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     
     # Status
     is_active = Column(Boolean, default=True)

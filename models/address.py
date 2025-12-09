@@ -14,8 +14,12 @@ class AddressModel(BaseModel):
     """
     __tablename__ = 'addresses'
 
-    street = Column(String, index=True)
-    number = Column(String)
-    city = Column(String)
-    client_id = Column(Integer, ForeignKey('clients.id_key'), index=True)
-    client = relationship('ClientModel', back_populates='addresses', lazy='select')
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)  # ← 'id' no 'id_key'
+    street = Column(String(200))
+    city = Column(String(100))
+    state = Column(String(100))
+    zip_code = Column(String(20))
+    
+    # Relación
+    client = relationship("ClientModel", back_populates="addresses")

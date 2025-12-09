@@ -17,37 +17,49 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Configurar CORS dinámicamente
 def get_cors_origins():
     """Get CORS origins from environment or use defaults"""
     cors_env = os.getenv("CORS_ORIGINS", "")
-    if cors_env:
-        origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
-    else:
-        origins = [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "https://pruebafrontend-ea20.onrender.com",
-            "https://comercio-digital.onrender.com"  # ← AÑADE TU PROPIO BACKEND
-        ]
-    
-    # En desarrollo, permite más orígenes
-    origins.extend([
-        "http://localhost:8080",
+    origins = []
+
+    # Orígenes por defecto (frontend en Render)
+    default_origins = [
+        "https://pruebafrontend-ea20.onrender.com",
+        "https://comercio-digital.onrender.com"
+    ]
+
+    # Orígenes locales para desarrollo
+    local_origins = [
+        "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ])
-    
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8080"
+    ]
+
+    # Agregar orígenes desde la variable de entorno si existe
+    if cors_env:
+        origins.extend([origin.strip() for origin in cors_env.split(",") if origin.strip()])
+
+    # Agregar orígenes por defecto y locales
+    origins.extend(default_origins)
+    origins.extend(local_origins)
+
+    # Remover duplicados
+    origins = list(set(origins))
+
     logger.info(f"CORS origins configured: {origins}")
     return origins
 
+# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
+    max_age=3600,
 )
 
 # Verificar base de datos al inicio
@@ -56,13 +68,13 @@ async def startup_event():
     try:
         from config.database import check_connection, initialize_models
         logger.info("🚀 Starting Ecommerce Backend...")
-        
+
         if check_connection():
             logger.info("✅ Database connection successful")
             initialize_models()
         else:
             logger.warning("⚠️ Database connection failed - running in degraded mode")
-            
+
     except Exception as e:
         logger.error(f"Startup error: {e}")
         logger.warning("Continuing despite startup errors")
@@ -98,6 +110,7 @@ app.include_router(product_router, prefix="/api/v1/products")
 app.include_router(order_router, prefix="/api/v1/orders")
 app.include_router(bill_router, prefix="/api/v1/bills")
 app.include_router(client_router, prefix="/api/v1/clients")
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 10000))
