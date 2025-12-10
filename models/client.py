@@ -13,13 +13,9 @@ class Client(BaseModel):  # <-- Cambiado de ClientModel a Client
     """
     __tablename__ = 'clients'
 
-    # Primary key
-    id = Column(Integer, primary_key=True, index=True)
-
-    # Añade esta columna para compatibilidad con otras tablas
-    id_key = Column(Integer, unique=True, nullable=True)
-
     # Basic information
+    id_key = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, unique=True, nullable=True)
     name = Column(String(100), nullable=False)
     lastname = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
@@ -42,9 +38,11 @@ class Client(BaseModel):  # <-- Cambiado de ClientModel a Client
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Si id_key no se proporciona, hacerlo igual a id
-        if self.id and not self.id_key:
+        # Asegurar que id_key tenga valor
+        if self.id_key is None and self.id is not None:
             self.id_key = self.id
+        elif self.id is None and self.id_key is not None:
+            self.id = self.id_key  # Para compatibilidad temporal
 
     def __repr__(self):
-        return f"<Client(id={self.id}, id_key={self.id_key}, email='{self.email}', name='{self.name}', lastname='{self.lastname}')>"
+        return f"<Client(id_key={self.id_key}, email='{self.email}', name='{self.name}', lastname='{self.lastname}')>"

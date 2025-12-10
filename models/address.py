@@ -15,7 +15,7 @@ class AddressModel(BaseModel):
     __tablename__ = 'addresses'
 
     id = Column(Integer, primary_key=True, index=True)
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)  # ← 'id' no 'id_key'
+    client_id_key = Column(Integer, ForeignKey("clients.id_key"), nullable=False) 
     street = Column(String(200))
     city = Column(String(100))
     state = Column(String(100))

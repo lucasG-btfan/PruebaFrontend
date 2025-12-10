@@ -39,7 +39,7 @@ class ClientUpdateSchema(BaseSchema):
 
 class ClientResponseSchema(ClientBaseSchema):
     """Schema for client response."""
-    id: int
+    id_key: int
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime] = None

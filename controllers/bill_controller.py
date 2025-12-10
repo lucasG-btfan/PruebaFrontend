@@ -13,7 +13,7 @@ mock_bills = [
         "date": "2024-01-01",
         "total": 1499.97,
         "payment_type": 1,  # 1=CASH, 2=CREDIT_CARD, 3=DEBIT_CARD, 4=TRANSFER
-        "client_id": 1,
+        "client.id_key": 1,
         "discount": 0,
         "created_at": "2024-01-01T10:00:00Z"
     }
