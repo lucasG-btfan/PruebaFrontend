@@ -18,13 +18,13 @@ try:
     # Importar Base y modelos
     from models.base_model import Base
     from models.client import ClientModel
-    from models.bill import Bill
-    from models.order import Order
-    from models.order_detail import OrderDetail
-    from models.product import Product
-    from models.category import Category
-    from models.address import Address
-    from models.review import Review
+    from models.bill import BillModel
+    from models.order import OrderModel
+    from models.order_detail import OrderDetailModel
+    from models.product import ProductModel
+    from models.category import CategoryModel
+    from models.address import AddressModel
+    from models.review import ReviewModel
     
     print("✅ Modelos importados correctamente")
     

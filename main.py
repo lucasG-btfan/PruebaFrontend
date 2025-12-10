@@ -1,6 +1,6 @@
 import os
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
 
 # Configurar logging
@@ -63,7 +63,7 @@ app.add_middleware(
 )
 
 @app.post("/api/v1/admin/migrate-idkey")
-async def migrate_idkey_endpoint():
+async def migrate_idkey_endpoint(request: Request):
     """Endpoint para ejecutar migración a id_key"""
     # Proteger con API key en producción
     api_key = request.headers.get("X-API-KEY")

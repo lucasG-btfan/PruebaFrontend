@@ -1,76 +1,51 @@
 # diagnose.py
-import sys
 import os
-import logging
+import sys
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+print("🔍 Diagnóstico del sistema")
 
-print("🔍 =============== DIAGNÓSTICO COMPLETO ===============")
+# 1. Verificar estructura de directorios
+print("\n1. Estructura de directorios:")
+for root, dirs, files in os.walk("."):
+    level = root.replace(".", "").count(os.sep)
+    indent = " " * 2 * level
+    print(f"{indent}{os.path.basename(root)}/")
+    subindent = " " * 2 * (level + 1)
+    for file in files:
+        if file.endswith(".py"):
+            print(f"{subindent}{file}")
 
-# 1. Verificar variables de entorno
-print("\n1️⃣ VERIFICANDO VARIABLES DE ENTORNO:")
-database_url = os.getenv("DATABASE_URL")
-print(f"   DATABASE_URL: {'✅ Seteada' if database_url else '❌ No set'}")
-if database_url:
-    print(f"   Longitud: {len(database_url)} caracteres")
-    print(f"   Inicia con: {database_url[:30]}...")
-
-# 2. Probar importación de config
-print("\n2️⃣ VERIFICANDO IMPORTACIÓN DE CONFIG:")
+# 2. Verificar models/client.py
+print("\n2. Contenido de models/client.py:")
 try:
-    from config import engine, DATABASE_URL, check_connection, Base
-    print("   ✅ Config importada correctamente")
-    print(f"   Base class: {Base}")
-    print(f"   Engine: {engine}")
-except Exception as e:
-    print(f"   ❌ Error importando config: {e}")
-    import traceback
-    traceback.print_exc()
-
-# 3. Probar conexión a DB
-print("\n3️⃣ VERIFICANDO CONEXIÓN A BASE DE DATOS:")
-try:
-    success = check_connection()
-    if success:
-        print("   ✅ Conexión exitosa a PostgreSQL")
-    else:
-        print("   ❌ Falló la conexión a la base de datos")
-except Exception as e:
-    print(f"   ❌ Error en check_connection: {e}")
-
-# 4. Verificar modelos
-print("\n4️⃣ VERIFICANDO MODELOS:")
-try:
-    from models.base_model import Base as ModelsBase
-    print(f"   ✅ Base desde models: {ModelsBase}")
-    
-    # Verificar que es la misma Base
-    from config import Base as ConfigBase
-    if ModelsBase is ConfigBase:
-        print("   ✅ Misma instancia de Base en config y models")
-    else:
-        print("   ⚠️ Diferentes instancias de Base")
+    with open("models/client.py", "r") as f:
+        content = f.read()
+        # Buscar class definition
+        import re
+        match = re.search(r"class\s+(\w+)", content)
+        if match:
+            print(f"   Clase encontrada: {match.group(1)}")
+        else:
+            print("   ❌ No se encontró definición de clase")
         
-    # Listar modelos registrados
-    if hasattr(ModelsBase, 'registry'):
-        registered = list(ModelsBase.registry._class_registry.keys())
-        print(f"   📋 Modelos registrados: {registered}")
-        
-except Exception as e:
-    print(f"   ❌ Error con modelos: {e}")
+        # Verificar BaseModel import
+        if "from models.base_model import BaseModel" in content:
+            print("   ✅ BaseModel importado correctamente")
+        else:
+            print("   ❌ BaseModel no importado")
+            
+except FileNotFoundError:
+    print("   ❌ models/client.py no existe")
+    # Verificar si existe con otro nombre
+    py_files = [f for f in os.listdir("models") if f.endswith(".py")]
+    print(f"   Archivos en models/: {py_files}")
 
-# 5. Verificar estructura de tablas
-print("\n5️⃣ VERIFICANDO METADATA DE TABLAS:")
+# 3. Verificar __init__.py en models
+print("\n3. models/__init__.py:")
 try:
-    from config import Base
-    tables = Base.metadata.tables.keys()
-    if tables:
-        print(f"   ✅ Tablas en metadata: {list(tables)}")
-    else:
-        print("   ⚠️ No hay tablas en metadata (¿modelos no importados?)")
-except Exception as e:
-    print(f"   ❌ Error con metadata: {e}")
+    with open("models/__init__.py", "r") as f:
+        print(f.read())
+except FileNotFoundError:
+    print("   ⚠️ No existe models/__init__.py")
 
-print("\n🔍 =============== FIN DEL DIAGNÓSTICO ===============")
+print("\n✅ Diagnóstico completado")
