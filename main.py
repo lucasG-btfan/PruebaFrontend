@@ -62,6 +62,12 @@ app.add_middleware(
     max_age=3600,
 )
 
+@app.post("/api/v1/fix-id-key")
+async def fix_id_key_endpoint():
+    """Endpoint temporal para arreglar la columna id_key"""
+    from config.database import SessionLocal
+    from sqlalchemy import text
+
 # Verificar base de datos al inicio
 @app.on_event("startup")
 async def startup_event():
