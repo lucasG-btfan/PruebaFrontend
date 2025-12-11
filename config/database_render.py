@@ -14,7 +14,7 @@ database_url = os.getenv("DATABASE_URL", "").strip()
 if not database_url:
     logger.warning("⚠️ DATABASE_URL environment variable is empty or not set")
     # Usar la URL directa como fallback
-    database_url = "postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a.ohio-postgres.render.com/ecommerce_db_sbeb"
+    database_url = "postgresql://ecommerce_db_pg18_user:8wj5MwKBGSfrK3ZG6vADvjT5pkc4ai7u@dpg-d4riokmr433s73a9vb70-a.ohio-postgres.render.com/ecommerce_db_pg18"
 
 # ✅ CORREGIR: Postgres en Render usa postgres:// pero SQLAlchemy necesita postgresql://
 if database_url.startswith("postgres://"):

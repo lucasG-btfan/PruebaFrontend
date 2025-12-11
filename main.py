@@ -62,7 +62,7 @@ app.add_middleware(
     max_age=3600,
 )
 
-@app.post("/api/v1/admin/migrate-idkey")
+@app.post("/api/v1/admin/migrate-idkey") #endpoint temporal
 async def migrate_idkey_endpoint(request: Request):
     """Endpoint para ejecutar migración a id_key"""
     # Proteger con API key en producción

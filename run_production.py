@@ -24,7 +24,7 @@ if "RENDER" in os.environ:
     # Force critical environment variables
     if not os.getenv("DATABASE_URL"):
         logger.warning("⚠️ DATABASE_URL not found, using default")
-        os.environ["DATABASE_URL"] = "postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a.ohio-postgres.render.com/ecommerce_db_sbeb"
+        os.environ["DATABASE_URL"] = "postgresql://ecommerce_db_pg18_user:8wj5MwKBGSfrK3ZG6vADvjT5pkc4ai7u@dpg-d4riokmr433s73a9vb70-a.ohio-postgres.render.com/ecommerce_db_pg18"
     
     # Set PORT for Render
     if not os.getenv("PORT"):

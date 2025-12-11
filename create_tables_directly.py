@@ -7,7 +7,7 @@ import traceback
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Configurar variable de entorno para database_render
-os.environ['DATABASE_URL'] = 'postgresql://ecommerce_user:XuchJ7YFaWcfTnq4s1RX4CpTTGrxwfbG@dpg-d4mvsm1r0fns73ai8s10-a.ohio-postgres.render.com/ecommerce_db_sbeb'
+os.environ['DATABASE_URL'] = 'postgresql://ecommerce_db_pg18_user:8wj5MwKBGSfrK3ZG6vADvjT5pkc4ai7u@dpg-d4riokmr433s73a9vb70-a.ohio-postgres.render.com/ecommerce_db_pg18'
 
 try:
     # Importar después de configurar la variable

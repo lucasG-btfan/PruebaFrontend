@@ -1,4 +1,3 @@
-# models/__init__.py - CORREGIDO
 """
 Initialize models package and ensure all models are imported.
 This helps SQLAlchemy discover all models.
@@ -11,8 +10,8 @@ logger = logging.getLogger(__name__)
 from .base_model import Base, BaseModel
 
 # Importar todos los modelos para que se registren con Base
-# Esto debe hacerse en este orden específico
 try:
+    # ✅ CORRECCIÓN: Usar los nombres correctos de las clases
     from .client import ClientModel
     from .bill import BillModel
     from .order import OrderModel

@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from models.base_model import BaseModel
 
-class Client(BaseModel):  # <-- Cambiado de ClientModel a Client
+class ClientModel(BaseModel):  # <-- Cambiado de ClientModel a Client
     """
     Client model representing users/customers.
     """
