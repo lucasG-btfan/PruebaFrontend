@@ -13,7 +13,7 @@ class OrderModel(BaseModel):
     delivery_method = Column(Enum(DeliveryMethod), index=True)
     status = Column(Enum(Status), index=True)
     client_id_key = Column(Integer, ForeignKey('clients.id_key'), index=True)
-    bill_id = Column(Integer, ForeignKey('bills.id_key'), index=True)
+    bill_id = Column(Integer, ForeignKey('bills.id'), index=True)
 
     order_details = relationship("OrderDetailModel", back_populates="order", cascade="all, delete-orphan",
                                  lazy="select")
