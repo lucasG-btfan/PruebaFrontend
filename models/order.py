@@ -14,7 +14,6 @@ class OrderModel(BaseModel):
     status = Column(Enum(Status), index=True)
     client_id_key = Column(Integer, ForeignKey('clients.id_key'), index=True)
 
-    # Elimina esta línea para evitar el conflicto:
     # bill_id = Column(Integer, ForeignKey('bills.id'), index=True)
 
     order_details = relationship(

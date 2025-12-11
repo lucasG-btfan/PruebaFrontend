@@ -10,7 +10,6 @@ class BaseModel(Base):
     """Abstract base model with common fields."""
     __abstract__ = True
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime,
         default=datetime.datetime.utcnow,

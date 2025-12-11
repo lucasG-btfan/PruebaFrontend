@@ -13,7 +13,7 @@ class ProductModel(BaseModel):
     )
 
     id_key = Column(Integer, primary_key=True, index=True)
-    id = Column(Integer, unique=True, nullable=True)  
+    id = Column(Integer, unique=True, nullable=True)
 
     name = Column(String(255), nullable=False, index=True)
     price = Column(Float, nullable=False, index=True)
