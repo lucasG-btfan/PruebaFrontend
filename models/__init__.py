@@ -11,7 +11,6 @@ from .base_model import Base, BaseModel
 
 # Importar todos los modelos para que se registren con Base
 try:
-    # ✅ CORRECCIÓN: Usar los nombres correctos de las clases
     from .client import ClientModel
     from .bill import BillModel
     from .order import OrderModel

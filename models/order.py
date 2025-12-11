@@ -8,6 +8,9 @@ from models.enums import DeliveryMethod, Status
 class OrderModel(BaseModel):
     __tablename__ = "orders"
 
+    id_key = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, unique=True, nullable=True)
+
     date = Column(DateTime, index=True)
     total = Column(Float)
     delivery_method = Column(Enum(DeliveryMethod), index=True)
