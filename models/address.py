@@ -3,14 +3,9 @@ from sqlalchemy.orm import relationship
 from models.base_model import BaseModel
 
 class AddressModel(BaseModel):
-    """
-    AddressModel class with attributes and relationships.
-    """
     __tablename__ = 'addresses'
 
     id_key = Column(Integer, primary_key=True, index=True)
-    id = Column(Integer, unique=True, nullable=True)  
-
     client_id_key = Column(Integer, ForeignKey("clients.id_key"), nullable=False, index=True)
     street = Column(String(200))
     city = Column(String(100))
@@ -19,3 +14,6 @@ class AddressModel(BaseModel):
 
     # Relación
     client = relationship("ClientModel", back_populates="addresses")
+
+    def __repr__(self):
+        return f"<Address(id_key={self.id_key}, city='{self.city}')>"

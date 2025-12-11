@@ -1,4 +1,3 @@
-# models/client.py
 """
 Client model for storing client information.
 """
@@ -7,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from models.base_model import BaseModel
 
-class ClientModel(BaseModel):  # <-- Cambiado de ClientModel a Client
+class ClientModel(BaseModel):  
     """
     Client model representing users/customers.
     """
@@ -15,7 +14,6 @@ class ClientModel(BaseModel):  # <-- Cambiado de ClientModel a Client
 
     # Basic information
     id_key = Column(Integer, primary_key=True, index=True)
-    id = Column(Integer, unique=True, nullable=True)
     name = Column(String(100), nullable=False)
     lastname = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
@@ -38,11 +36,6 @@ class ClientModel(BaseModel):  # <-- Cambiado de ClientModel a Client
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Asegurar que id_key tenga valor
-        if self.id_key is None and self.id is not None:
-            self.id_key = self.id
-        elif self.id is None and self.id_key is not None:
-            self.id = self.id_key  # Para compatibilidad temporal
 
     def __repr__(self):
         return f"<Client(id_key={self.id_key}, email='{self.email}', name='{self.name}', lastname='{self.lastname}')>"
