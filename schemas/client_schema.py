@@ -1,3 +1,4 @@
+# schemas/client_schema.py
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
@@ -13,7 +14,6 @@ class AddressSchema(BaseModel):
         from_attributes = True
 
 class ClientBaseSchema(BaseModel):
-    
     name: str = Field(..., min_length=1, max_length=100)
     lastname: str = Field(..., min_length=1, max_length=100)
     email: EmailStr = Field(..., description="Email address of the client")
@@ -56,10 +56,12 @@ class ClientResponseSchema(ClientBaseSchema):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
+    addresses: Optional[List[AddressSchema]] = None
 
     class Config:
         from_attributes = True
 
+# AÑADE ESTE ESQUEMA - ES LO QUE TU FRONTEND ESPERA
 class ClientListResponseSchema(BaseModel):
     items: List[ClientResponseSchema]
     total: int
@@ -70,4 +72,4 @@ class ClientListResponseSchema(BaseModel):
     class Config:
         from_attributes = True
 
-ClientSchema = ClientResponseSchema 
+ClientSchema = ClientResponseSchema

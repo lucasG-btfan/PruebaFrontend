@@ -115,10 +115,10 @@ from controllers.order_controller import router as order_router
 from controllers.bill_controller import router as bill_router
 from controllers.client_controller import router as client_router
 
-app.include_router(product_router, prefix="/api/v1/products")
-app.include_router(order_router, prefix="/api/v1/orders")
-app.include_router(bill_router, prefix="/api/v1/bills")
-app.include_router(client_router, prefix="/api/v1/clients")
+app.include_router(product_router, prefix="/api/v1/products", tags=["Products"])
+app.include_router(order_router, prefix="/api/v1/orders", tags=["Orders"])
+app.include_router(bill_router, prefix="/api/v1/bills", tags=["Bills"])
+app.include_router(client_router, prefix="/api/v1/clients", tags=["Clients"])
 
 if __name__ == "__main__":
     import uvicorn
