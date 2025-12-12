@@ -1,4 +1,3 @@
-# models/client.py
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -11,7 +10,7 @@ class ClientModel(BaseModel):
         Integer,
         primary_key=True,
         index=True,
-        autoincrement=True, 
+        autoincrement=True,
         nullable=False
     )
 
@@ -29,8 +28,16 @@ class ClientModel(BaseModel):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Relaciones
-    addresses = relationship("AddressModel", back_populates="client", cascade="all, delete-orphan", lazy="select")
+    # Relación con AddressModel
+    addresses = relationship(
+        "AddressModel",
+        back_populates="client",
+        cascade="all, delete-orphan",
+        lazy="select",
+        foreign_keys="AddressModel.client_id_key"  
+    )
+
+    # Relaciones 
     orders = relationship("OrderModel", back_populates="client", cascade="all, delete-orphan", lazy="select")
     bills = relationship("BillModel", back_populates="client", cascade="all, delete-orphan", lazy="select")
 

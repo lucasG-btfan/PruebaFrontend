@@ -11,7 +11,15 @@ class AddressModel(BaseModel):
     state = Column(String(100))
     zip_code = Column(String(20))
 
-    # Relación
+    # Clave foránea: vincula cada dirección a un cliente
+    client_id_key = Column(
+        Integer,
+        ForeignKey('clients.id_key', ondelete='CASCADE'),  # Si se elimina el cliente, se eliminan sus direcciones
+        nullable=False,
+        index=True
+    )
+
+    # Relación con ClientModel
     client = relationship("ClientModel", back_populates="addresses")
 
     def __repr__(self):
