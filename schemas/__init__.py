@@ -1,7 +1,5 @@
-# schemas/__init__.py
 """
 Pydantic schemas for request/response validation.
+Este archivo está vacío para evitar importaciones circulares.
+Cada controlador importará solo los esquemas que necesita directamente.
 """
-
-# No hagas imports automáticos aquí
-# Deja que cada controlador importe solo lo que necesita

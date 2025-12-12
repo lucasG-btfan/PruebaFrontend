@@ -1,11 +1,8 @@
+# schemas/order_detail_schema.py
 """OrderDetail schema with validation."""
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 from datetime import datetime
 from pydantic import Field, BaseModel
-
-if TYPE_CHECKING:
-    from schemas.order_schema import OrderSchema
-    from schemas.product_schema import ProductSchema
 
 
 class OrderDetailBaseSchema(BaseModel):
@@ -38,20 +35,11 @@ class OrderDetailUpdateSchema(BaseModel):
 
 
 class OrderDetailSchema(OrderDetailBaseSchema):
-    """Full OrderDetail schema with relationships."""
+    """Full OrderDetail schema WITHOUT circular references."""
     
     id_key: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    order: Optional['OrderSchema'] = None
-    product: Optional['ProductSchema'] = None
     
     class Config:
         from_attributes = True
-
-
-# Para evitar importaciones circulares
-from schemas.order_schema import OrderSchema
-from schemas.product_schema import ProductSchema
-
-OrderDetailSchema.update_forward_refs()

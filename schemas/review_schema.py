@@ -1,35 +1,41 @@
-from typing import Optional, TYPE_CHECKING
+# schemas/review_schema.py
+"""Review schema with validation."""
+from typing import Optional
+from datetime import datetime
 from pydantic import Field, BaseModel
 
-from schemas.base_schema import BaseSchema
 
-if TYPE_CHECKING:
-    from schemas.product_schema import ProductSchema
+class ReviewBaseSchema(BaseModel):
+    """Base schema for Review."""
+    
+    rating: float = Field(..., ge=1.0, le=5.0)
+    comment: Optional[str] = Field(None, min_length=10, max_length=1000)
+    product_id: int = Field(...)
+    
+    class Config:
+        from_attributes = True
 
-class ReviewSchema(BaseSchema):
-    """Product review schema with validation"""
 
-    rating: float = Field(
-        ...,
-        ge=1.0,
-        le=5.0,
-        description="Rating from 1 to 5 stars (required)"
-    )
+class ReviewCreateSchema(ReviewBaseSchema):
+    """Schema for creating Review."""
+    pass
 
-    comment: Optional[str] = Field(
-        None,
-        min_length=10,
-        max_length=1000,
-        description="Review comment (optional, 10-1000 characters)"
-    )
 
-    product_id: int = Field(
-        ...,
-        description="Product ID reference (required)"
-    )
+class ReviewUpdateSchema(BaseModel):
+    """Schema for updating Review."""
+    
+    rating: Optional[float] = Field(None, ge=1.0, le=5.0)
+    comment: Optional[str] = Field(None, min_length=10, max_length=1000)
+    product_id: Optional[int] = Field(None)
+    
+    class Config:
+        from_attributes = True
 
-    product: Optional["ProductSchema"] = None  # Usa comillas para la referencia
 
-# Importa y actualiza las referencias después de definir la clase
-from schemas import product_schema
-ReviewSchema.update_forward_refs()
+class ReviewSchema(ReviewBaseSchema):
+    """Full Review schema WITHOUT circular references."""
+    
+    id_key: int
+    created_at: Optional[datetime] = None
+    class Config:
+        from_attributes = True

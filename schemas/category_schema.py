@@ -1,10 +1,8 @@
+# schemas/category_schema.py
 """Category schema with validation."""
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List
 from datetime import datetime
 from pydantic import Field, BaseModel
-
-if TYPE_CHECKING:
-    from schemas.product_schema import ProductSchema
 
 
 class CategoryBaseSchema(BaseModel):
@@ -31,16 +29,13 @@ class CategoryUpdateSchema(BaseModel):
 
 
 class CategorySchema(CategoryBaseSchema):
-    """Full Category schema with relationships."""
+    """Full Category schema WITHOUT circular references."""
     
     id_key: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    products: Optional[List['ProductSchema']] = []
+    # REMOVER relación circular temporalmente
+    # products: Optional[List[Dict]] = []
     
     class Config:
         from_attributes = True
-
-
-# Actualiza las referencias después de definir la clase
-CategorySchema.update_forward_refs()

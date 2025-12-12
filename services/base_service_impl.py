@@ -12,7 +12,7 @@ from schemas.base_schema import BaseSchema
 class BaseServiceImpl(BaseService):
     """Base Service Implementation"""
 
-    def __init__(self, repository_class: Type[BaseRepository],
+    def __init__(self, repository_class: Type['BaseRepository'],
                  model: Type[BaseModel],
                  schema: Type[BaseSchema],
                  db: Session):
@@ -22,12 +22,12 @@ class BaseServiceImpl(BaseService):
         self._schema = schema
 
     @property
-    def repository(self) -> BaseRepository:
+    def repository(self) -> 'BaseRepository':
         """Repository to access database"""
         return self._repository
 
     @property
-    def schema(self) -> BaseSchema:
+    def schema(self) -> 'BaseSchema':
         """Pydantic Schema to validate data"""
         return self._schema
 
@@ -36,19 +36,19 @@ class BaseServiceImpl(BaseService):
         """SQLAlchemy Model"""
         return self._model
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[BaseSchema]:
+    def get_all(self, skip: int = 0, limit: int = 100) -> List['BaseSchema']:
         """Get all data with pagination"""
         return self.repository.find_all(skip=skip, limit=limit)
 
-    def get_one(self, id_key: int) -> BaseSchema:
+    def get_one(self, id_key: int) -> 'BaseSchema':
         """Get one data"""
         return self.repository.find(id_key)
 
-    def save(self, schema: BaseSchema) -> BaseSchema:
+    def save(self, schema: BaseSchema) -> 'BaseSchema':
         """Save data"""
         return self.repository.save(self.to_model(schema))
 
-    def update(self, id_key: int, schema: BaseSchema) -> BaseSchema:
+    def update(self, id_key: int, schema: BaseSchema) -> 'BaseSchema':
         """Update data"""
         return self.repository.update(id_key, schema.model_dump(exclude_unset=True))
 
@@ -56,7 +56,7 @@ class BaseServiceImpl(BaseService):
         """Delete data"""
         self.repository.remove(id_key)
 
-    def to_model(self, schema: BaseSchema) -> BaseModel:
+    def to_model(self, schema: BaseSchema) -> 'BaseModel':
         """Convert schema to model"""
         model_class = type(self.model) if not callable(self.model) else self.model
         model_instance = model_class(**schema.model_dump(exclude_unset=True))

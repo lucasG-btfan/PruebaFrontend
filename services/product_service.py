@@ -2,21 +2,21 @@
 import logging
 from typing import List, Optional
 from sqlalchemy.orm import Session
-
 from models.product import ProductModel
 from repositories.product_repository import ProductRepository
-from schemas.product_schema import ProductSchema
 from services.base_service_impl import BaseServiceImpl
 from services.cache_service import cache_service
 from utils.logging_utils import get_sanitized_logger
 
-logger = get_sanitized_logger(__name__)  # P11: Sanitized logging
+logger = get_sanitized_logger(__name__)
 
 
 class ProductService(BaseServiceImpl):
     """Service for Product entity with caching."""
 
     def __init__(self, db: Session):
+        # Importar aquí para evitar importaciones circulares
+        from schemas.product_schema import ProductSchema
         super().__init__(
             repository_class=ProductRepository,
             model=ProductModel,
@@ -26,13 +26,16 @@ class ProductService(BaseServiceImpl):
         self.cache = cache_service
         self.cache_prefix = "products"
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[ProductSchema]:
+    def get_all(self, skip: int = 0, limit: int = 100) -> List['ProductSchema']: 
         """
         Get all products with caching
 
         Cache key pattern: products:list:skip:{skip}:limit:{limit}
         TTL: 5 minutes (default REDIS_CACHE_TTL)
         """
+        # Importar localmente
+        from schemas.product_schema import ProductSchema
+        
         # Build cache key
         cache_key = self.cache.build_key(
             self.cache_prefix,
@@ -52,19 +55,21 @@ class ProductService(BaseServiceImpl):
         logger.debug(f"Cache MISS: {cache_key}")
         products = super().get_all(skip, limit)
 
-        # Cache the result (convert to dict for JSON serialization)
         products_dict = [p.model_dump() for p in products]
         self.cache.set(cache_key, products_dict)
 
         return products
 
-    def get_one(self, id_key: int) -> ProductSchema:
+    def get_one(self, id_key: int) -> 'ProductSchema':  
         """
         Get single product by ID with caching
 
         Cache key pattern: products:id:{id_key}
         TTL: 5 minutes
         """
+        # Importar localmente
+        from schemas.product_schema import ProductSchema
+        
         cache_key = self.cache.build_key(self.cache_prefix, "id", id=id_key)
 
         # Try cache first
@@ -82,10 +87,12 @@ class ProductService(BaseServiceImpl):
 
         return product
 
-    def save(self, schema: ProductSchema) -> ProductSchema:
+    def save(self, schema: 'ProductSchema') -> 'ProductSchema':  
         """
         Create new product and invalidate list cache
         """
+        # Importar localmente
+        from schemas.product_schema import ProductSchema
         product = super().save(schema)
 
         # Invalidate list cache (all paginated lists)
@@ -93,7 +100,7 @@ class ProductService(BaseServiceImpl):
 
         return product
 
-    def update(self, id_key: int, schema: ProductSchema) -> ProductSchema:
+    def update(self, id_key: int, schema: 'ProductSchema') -> 'ProductSchema':  
         """
         Update product with transactional cache invalidation
 
@@ -108,14 +115,13 @@ class ProductService(BaseServiceImpl):
             InstanceNotFoundError: If product doesn't exist
             ValueError: If validation fails
         """
-        # Build cache keys BEFORE update (prepare for invalidation)
+        from schemas.product_schema import ProductSchema
+        
         cache_key = self.cache.build_key(self.cache_prefix, "id", id=id_key)
 
         try:
-            # Update in database (atomic transaction)
             product = super().update(id_key, schema)
 
-            # Only invalidate cache AFTER successful DB commit
             self.cache.delete(cache_key)
             self._invalidate_list_cache()
 
@@ -123,7 +129,6 @@ class ProductService(BaseServiceImpl):
             return product
 
         except Exception as e:
-            # If update fails, cache remains consistent (no invalidation)
             logger.error(f"Failed to update product {id_key}: {e}")
             raise
 
@@ -138,12 +143,10 @@ class ProductService(BaseServiceImpl):
         from models.order_detail import OrderDetailModel
         from sqlalchemy import select
 
-        # Check if product has sales history
         stmt = select(OrderDetailModel).where(
             OrderDetailModel.product_id == id_key
         ).limit(1)
 
-        # Get session from repository
         has_sales = self._repository.session.scalars(stmt).first()
 
         if has_sales:
@@ -155,15 +158,12 @@ class ProductService(BaseServiceImpl):
                 f"Consider marking as inactive instead of deleting."
             )
 
-        # Safe to delete
         logger.info(f"Deleting product {id_key} (no sales history)")
         super().delete(id_key)
 
-        # Invalidate specific product cache
         cache_key = self.cache.build_key(self.cache_prefix, "id", id=id_key)
         self.cache.delete(cache_key)
 
-        # Invalidate list cache
         self._invalidate_list_cache()
 
     def _invalidate_list_cache(self):
