@@ -1,51 +1,21 @@
-"""Order schema with validation."""
 from typing import Optional, List
 from datetime import datetime
 from pydantic import Field, BaseModel
 
+class OrderDetailCreateSchema(BaseModel):
+    """Schema for order detail creation."""
+    product_id: int = Field(..., gt=0)
+    quantity: int = Field(..., gt=0)
+    price: Optional[float] = Field(None, gt=0)
 
-class OrderBaseSchema(BaseModel):
-    """Base schema for Order."""
-    
-    client_id: int = Field(...)
-    bill_id: Optional[int] = Field(None)
-    total_amount: float = Field(..., ge=0)
-    status: int = Field(default=1, ge=1, le=4)  # 1-4 según OrderStatus
-    delivery_method: int = Field(default=1, ge=1, le=3)  # 1-3 según DeliveryMethod
-    notes: Optional[str] = Field(None, max_length=500)
-    date: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
-
-
-class OrderCreateSchema(OrderBaseSchema):
-    """Schema for creating Order."""
-    pass
-
-
-class OrderUpdateSchema(BaseModel):
-    """Schema for updating Order."""
-    
-    client_id: Optional[int] = Field(None)
-    bill_id: Optional[int] = Field(None)
-    total_amount: Optional[float] = Field(None, ge=0)
-    status: Optional[int] = Field(None, ge=1, le=4)
-    delivery_method: Optional[int] = Field(None, ge=1, le=3)
-    notes: Optional[str] = Field(None, max_length=500)
-    date: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
-
-
-class OrderSchema(OrderBaseSchema):
-    """Full Order schema."""
-    
-    id_key: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    order_number: Optional[str] = None
+class OrderCreateSchema(BaseModel):
+    """Schema for creating an order."""
+    client_id: int = Field(..., description="Client ID")
+    bill_id: Optional[int] = Field(None, description="Bill ID")
+    total: float = Field(..., gt=0, description="Order total")
+    delivery_method: int = Field(1, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
+    status: Optional[int] = Field(1, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
+    order_details: Optional[List[OrderDetailCreateSchema]] = Field(default=[], description="Order items")
     
     class Config:
         from_attributes = True
