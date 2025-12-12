@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, status
-from typing import Optional, List, Dict, Any
+from typing import  Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from config.database_render import get_db
-from schemas.order_schema import OrderSchema, OrderCreateSchema
+from schemas.order_schema import OrderCreateSchema
 from models.order import OrderModel
 from models.client import ClientModel
 import logging
