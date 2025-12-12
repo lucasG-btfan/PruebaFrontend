@@ -7,7 +7,7 @@ from models.enums import PaymentType
 class BillModel(BaseModel):
     __tablename__ = "bills"
 
-    id_key = Column(Integer, primary_key=True, index=True)
+    id_key = Column(Integer, primary_key=True, index=True, autoincrement=True, nullable=False)
 
     # Campos de factura
     bill_number = Column(String, unique=True, index=True, nullable=False)
@@ -27,6 +27,9 @@ class BillModel(BaseModel):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"<Bill(id_key={self.id_key}, bill_number='{self.bill_number}')>"

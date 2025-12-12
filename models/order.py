@@ -6,7 +6,7 @@ from models.enums import DeliveryMethod, Status
 class OrderModel(BaseModel):
     __tablename__ = "orders"
 
-    id_key = Column(Integer, primary_key=True, index=True)
+    id_key = Column(Integer, primary_key=True, index=True, autoincrement=True, nullable=False)
 
     date = Column(DateTime, index=True)
     total = Column(Float)
@@ -18,6 +18,9 @@ class OrderModel(BaseModel):
     order_details = relationship("OrderDetailModel", back_populates="order", cascade="all, delete-orphan", lazy="select")
     client = relationship("ClientModel", back_populates="orders", lazy="select")
     bill = relationship("BillModel", back_populates="order", lazy="select")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"<Order(id_key={self.id_key}, date={self.date})>"

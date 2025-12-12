@@ -5,8 +5,7 @@ from models.base_model import BaseModel
 class AddressModel(BaseModel):
     __tablename__ = 'addresses'
 
-    id_key = Column(Integer, primary_key=True, index=True)
-    client_id_key = Column(Integer, ForeignKey("clients.id_key"), nullable=False, index=True)
+    id_key = Column(Integer, primary_key=True, index=True, autoincrement=True, nullable=False)
     street = Column(String(200))
     city = Column(String(100))
     state = Column(String(100))
