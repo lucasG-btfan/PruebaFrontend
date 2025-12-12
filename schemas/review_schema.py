@@ -6,7 +6,6 @@ from schemas.base_schema import BaseSchema
 if TYPE_CHECKING:
     from schemas.product_schema import ProductSchema
 
-
 class ReviewSchema(BaseSchema):
     """Product review schema with validation"""
 
@@ -30,3 +29,7 @@ class ReviewSchema(BaseSchema):
     )
 
     product: Optional['ProductSchema'] = None
+
+# Actualiza las referencias después de definir la clase
+from schemas.product_schema import ProductSchema
+ReviewSchema.update_forward_refs()
