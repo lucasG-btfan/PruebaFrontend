@@ -1,4 +1,3 @@
-# schemas/order_detail_schema.py
 """OrderDetail schema with validation."""
 from typing import Optional
 from datetime import datetime
@@ -17,9 +16,15 @@ class OrderDetailBaseSchema(BaseModel):
         from_attributes = True
 
 
-class OrderDetailCreateSchema(OrderDetailBaseSchema):
-    """Schema for creating OrderDetail."""
-    pass
+class OrderDetailCreateSchema(BaseModel):
+    order_id: int = Field(..., gt=0)
+    product_id: int = Field(..., gt=0)
+    quantity: int = Field(..., gt=0)
+    price: Optional[float] = Field(None, gt=0)
+
+    class Config:
+        from_attributes = True
+        extra = 'ignore' 
 
 
 class OrderDetailUpdateSchema(BaseModel):
