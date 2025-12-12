@@ -5,9 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Configurar logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -62,77 +63,23 @@ app.add_middleware(
     max_age=3600,
 )
 
-@app.post("/api/v1/admin/migrate-idkey") #endpoint temporal
-async def migrate_idkey_endpoint(request: Request):
-    """Endpoint para ejecutar migración a id_key"""
-    # Proteger con API key en producción
-    api_key = request.headers.get("X-API-KEY")
-    if api_key != os.getenv("MIGRATION_KEY", "migration_temp_key"):
-        return {"error": "Unauthorized"}, 401
-    
-    from sqlalchemy import text
-    from config.database import SessionLocal
-    
-    db = SessionLocal()
-    try:
-        # Ejecutar migración paso a paso
-        steps = []
-        
-        # Paso 1: Agregar columna si no existe
-        db.execute(text("""
-            ALTER TABLE clients 
-            ADD COLUMN IF NOT EXISTS id_key INTEGER
-        """))
-        steps.append("Columna id_key agregada/verificada")
-        
-        # Paso 2: Poblar id_key
-        db.execute(text("""
-            UPDATE clients 
-            SET id_key = COALESCE(id_key, id)
-            WHERE id_key IS NULL OR id_key != id
-        """))
-        steps.append("id_key poblada con valores de id")
-        
-        # Paso 3: Hacer NOT NULL
-        db.execute(text("""
-            ALTER TABLE clients 
-            ALTER COLUMN id_key SET NOT NULL
-        """))
-        steps.append("id_key marcada como NOT NULL")
-        
-        # Paso 4: Agregar UNIQUE constraint
-        try:
-            db.execute(text("""
-                ALTER TABLE clients 
-                ADD CONSTRAINT clients_id_key_unique UNIQUE (id_key)
-            """))
-            steps.append("Constraint UNIQUE agregada")
-        except:
-            steps.append("Constraint UNIQUE ya existía")
-        
-        db.commit()
-        
-        return {
-            "success": True,
-            "steps": steps,
-            "message": "Migración iniciada. Ahora actualiza tus modelos."
-        }
-        
-    except Exception as e:
-        db.rollback()
-        return {"error": str(e)}, 500
-    finally:
-        db.close()
-
 # Verificar base de datos al inicio
 @app.on_event("startup")
 async def startup_event():
     try:
-        from config.database import check_connection, initialize_models
+        from config.database import check_connection, create_tables, initialize_models
         logger.info("🚀 Starting Ecommerce Backend...")
 
         if check_connection():
             logger.info("✅ Database connection successful")
+            
+            # ✅ FORZAR CREACIÓN DE TABLAS
+            logger.info("🔨 Creating database tables...")
+            if create_tables():
+                logger.info("✅ Tables created successfully")
+            else:
+                logger.error("❌ Failed to create tables")
+            
             initialize_models()
         else:
             logger.warning("⚠️ Database connection failed - running in degraded mode")

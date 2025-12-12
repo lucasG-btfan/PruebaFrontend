@@ -26,13 +26,17 @@ class ClientService:
         client_dict = client_data.dict()
         return self.repository.save(client_dict)
 
-    def get_all(self, skip: int = 0, limit: int = 100, is_active: Optional[bool] = None) -> Tuple[List[ClientSchema], int]:
-        """Get all clients with pagination and optional active filter."""
+    def get_all(self, skip: int = 0, limit: int = 100, is_active: Optional[bool] = None):
         try:
-            return self.repository.find_all(skip=skip, limit=limit, is_active=is_active)
+            query = self.db.query(ClientModel)
+            if is_active is not None:
+                query = query.filter(ClientModel.is_active == is_active)
+            clients = query.offset(skip).limit(limit).all()
+            total = query.count()
+            return clients, total
         except Exception as e:
-            logger.error(f"Error getting clients: {str(e)}")
-            return [], 0
+            logger.error(f"Error en get_all: {str(e)}", exc_info=True)
+            raise e
 
     def get_by_id(self, client_id: int) -> Optional[ClientSchema]:
         """Get client by ID."""

@@ -1,17 +1,20 @@
-# schemas/client_schema.py
-"""
-Pydantic schemas for Client.
-"""
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
-from schemas.base_schema import BaseSchema
+class AddressSchema(BaseModel):
+    id_key: int
+    street: str
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
 
+    class Config:
+        from_attributes = True
 
-class ClientBaseSchema(BaseSchema):
-    """Base schema for Client."""
-    name: str = Field(..., min_length=1, max_length=100)  # ← nombre
+class ClientBaseSchema(BaseModel):
+    
+    name: str = Field(..., min_length=1, max_length=100)
     lastname: str = Field(..., min_length=1, max_length=100)
     email: EmailStr = Field(..., description="Email address of the client")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
@@ -20,42 +23,42 @@ class ClientBaseSchema(BaseSchema):
     notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
     is_active: bool = Field(default=True, description="Whether the client is active")
 
+    class Config:
+        from_attributes = True
+
 class ClientCreateSchema(ClientBaseSchema):
-    """Schema for creating a new client."""
-    pass
+    address: Optional[str] = Field(None, max_length=200, description="Client address as a single string")
 
-
-class ClientUpdateSchema(BaseSchema):
-    """Schema for updating an existing client."""
-    name: str = Field(..., min_length=1, max_length=100)  # ← nombre
-    lastname: str = Field(..., min_length=1, max_length=100)
+class ClientUpdateSchema(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    lastname: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = Field(None)
     phone: Optional[str] = Field(None, max_length=20)
     company: Optional[str] = Field(None, max_length=100)
     tax_id: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = Field(None, max_length=500)
     is_active: Optional[bool] = Field(None)
+    address: Optional[str] = Field(None, max_length=200, description="Client address as a single string")
 
-
-class ClientResponseSchema(ClientBaseSchema):
-    """Schema for client response."""
-    id_key: int
-    created_at: datetime
-    updated_at: datetime
-    deleted_at: Optional[datetime] = None
-    
     class Config:
         from_attributes = True
 
+class ClientResponseSchema(ClientBaseSchema):
+    id_key: int
+    name: str
+    lastname: str
+    email: EmailStr
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    tax_id: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+    addresses: Optional[List[AddressSchema]] = None
 
-# ALIAS para compatibilidad con importaciones existentes
-ClientSchema = ClientResponseSchema  # <-- AÑADIR ESTO
+    class Config:
+        from_attributes = True
 
-
-class ClientListResponseSchema(BaseModel):
-    """Schema for list of clients response."""
-    items: List[ClientResponseSchema]
-    total: int
-    page: int
-    size: int
-    pages: int
+ClientSchema = ClientResponseSchema 
