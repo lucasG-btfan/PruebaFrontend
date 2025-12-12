@@ -39,7 +39,7 @@ async def get_order_detail(order_detail_id: int, db: Session = Depends(get_db)):
 
 @router.post("", response_model=OrderDetailSchema, status_code=status.HTTP_201_CREATED)
 async def create_order_detail(
-    order_detail_data: OrderDetailCreateSchema, 
+    order_detail_data: OrderDetailCreateSchema,
     db: Session = Depends(get_db)
 ):
     """Create a new order detail."""
@@ -48,32 +48,40 @@ async def create_order_detail(
         order = db.query(OrderModel).filter(OrderModel.id_key == order_detail_data.order_id).first()
         if not order:
             raise HTTPException(status_code=400, detail=f"Order with ID {order_detail_data.order_id} not found")
-        
+
         # Verificar que el producto existe
         product = db.query(ProductModel).filter(ProductModel.id_key == order_detail_data.product_id).first()
         if not product:
             raise HTTPException(status_code=400, detail=f"Product with ID {order_detail_data.product_id} not found")
-        
+
         # Verificar stock disponible
         if product.stock < order_detail_data.quantity:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=f"Insufficient stock. Available: {product.stock}, Requested: {order_detail_data.quantity}"
             )
-        
+
+        # Usar precio del producto si no se proporciona
+        price = order_detail_data.price if order_detail_data.price is not None else product.price
+
         # Actualizar stock del producto
         product.stock -= order_detail_data.quantity
-        
+
         # Crear el detalle de orden
-        order_detail_dict = order_detail_data.dict()
-        order_detail = OrderDetailModel(**order_detail_dict)
-        
+        order_detail = OrderDetailModel(
+            order_id=order_detail_data.order_id,
+            product_id=order_detail_data.product_id,
+            quantity=order_detail_data.quantity,
+            price=price
+        )
+
         db.add(order_detail)
         db.commit()
         db.refresh(order_detail)
-        
+
+        logger.info(f"Order detail created for order {order_detail_data.order_id}")
         return order_detail
-        
+
     except HTTPException:
         db.rollback()
         raise
@@ -92,22 +100,22 @@ async def update_order_detail(
     order_detail = db.query(OrderDetailModel).filter(OrderDetailModel.id_key == order_detail_id).first()
     if not order_detail:
         raise HTTPException(status_code=404, detail="Order detail not found")
-    
+
     try:
         update_data = order_detail_data.dict(exclude_unset=True)
-        
+
         # Manejo especial para cambios en cantidad
         old_quantity = order_detail.quantity
         new_quantity = update_data.get('quantity', old_quantity)
-        
+
         if new_quantity != old_quantity:
             # Obtener el producto
             product_id = update_data.get('product_id', order_detail.product_id)
             product = db.query(ProductModel).filter(ProductModel.id_key == product_id).first()
-            
+
             if not product:
                 raise HTTPException(status_code=400, detail=f"Product with ID {product_id} not found")
-            
+
             # Calcular diferencia y verificar stock
             quantity_diff = new_quantity - old_quantity
             if quantity_diff > 0 and product.stock < quantity_diff:
@@ -115,18 +123,18 @@ async def update_order_detail(
                     status_code=400,
                     detail=f"Insufficient stock. Available: {product.stock}, Additional needed: {quantity_diff}"
                 )
-            
+
             # Actualizar stock
             product.stock -= quantity_diff
-        
+
         for key, value in update_data.items():
             if hasattr(order_detail, key):
                 setattr(order_detail, key, value)
-        
+
         db.commit()
         db.refresh(order_detail)
         return order_detail
-        
+
     except HTTPException:
         db.rollback()
         raise
@@ -141,19 +149,19 @@ async def delete_order_detail(order_detail_id: int, db: Session = Depends(get_db
     order_detail = db.query(OrderDetailModel).filter(OrderDetailModel.id_key == order_detail_id).first()
     if not order_detail:
         raise HTTPException(status_code=404, detail="Order detail not found")
-    
+
     try:
         # Restaurar stock del producto
         product = db.query(ProductModel).filter(ProductModel.id_key == order_detail.product_id).first()
         if product:
             product.stock += order_detail.quantity
-        
+
         # Eliminar el detalle de orden
         db.delete(order_detail)
         db.commit()
-        
+
         return {"message": "Order detail deleted successfully"}
-        
+
     except Exception as e:
         db.rollback()
         logger.error(f"Error deleting order detail: {e}")
