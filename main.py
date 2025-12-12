@@ -112,10 +112,12 @@ async def health_check():
 # Importar y registrar routers después de crear la app
 from controllers.product_controller import router as product_router
 from controllers.order_controller import router as order_router
+from controllers.order_detail_controller import router as order_detail_router
 from controllers.bill_controller import router as bill_router
 from controllers.client_controller import router as client_router
 
 app.include_router(product_router, prefix="/api/v1/products", tags=["Products"])
+app.include_router(order_detail_router, prefix="/api/v1/order_details", tags=["Order Details"])
 app.include_router(order_router, prefix="/api/v1/orders", tags=["Orders"])
 app.include_router(bill_router, prefix="/api/v1/bills", tags=["Bills"])
 app.include_router(client_router, prefix="/api/v1/clients", tags=["Clients"])
