@@ -56,7 +56,16 @@ class ClientResponseSchema(ClientBaseSchema):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
-    addresses: Optional[List[AddressSchema]] = None
+
+    class Config:
+        from_attributes = True
+
+class ClientListResponseSchema(BaseModel):
+    items: List[ClientResponseSchema]
+    total: int
+    page: int
+    size: int
+    pages: int
 
     class Config:
         from_attributes = True
