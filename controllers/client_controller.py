@@ -13,6 +13,7 @@ from models.client import ClientModel
 from models.address import AddressModel
 import logging
 
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -28,6 +29,54 @@ async def test_clients():
             "email": "juan@example.com"
         }
     }
+
+#Search para buscar un cliente
+@router.get("/search", response_model=ClientListResponseSchema)
+async def search_clients(
+    q: str = Query(..., min_length=1, description="Término de búsqueda"),
+    skip: int = Query(0, ge=0, description="Número de registros a saltar"),
+    limit: int = Query(10, ge=1, le=100, description="Máximo número de registros"),
+    db: Session = Depends(get_db)
+):
+    """Buscar clientes por nombre, apellido o email."""
+    try:
+        logger.info(f"Searching clients: q={q}, skip={skip}, limit={limit}")
+        
+        # Crear filtro de búsqueda en múltiples campos
+        search_filter = db.query(ClientModel).filter(
+            ClientModel.is_active == True,
+            func.lower(ClientModel.name).ilike(f"%{q.lower()}%") |
+            func.lower(ClientModel.lastname).ilike(f"%{q.lower()}%") |
+            func.lower(ClientModel.email).ilike(f"%{q.lower()}%") |
+            func.lower(ClientModel.phone).ilike(f"%{q.lower()}%")
+        )
+        
+        # Obtener resultados paginados
+        clients = search_filter.offset(skip).limit(limit).all()
+        
+        # Contar total de resultados
+        total = search_filter.count()
+        
+        # Calcular páginas
+        pages = (total + limit - 1) // limit if limit > 0 else 1
+        current_page = (skip // limit) + 1 if limit > 0 else 1
+        
+        logger.info(f"Search found {len(clients)} clients, total: {total}")
+        
+        return {
+            "items": clients,
+            "total": total,
+            "page": current_page,
+            "size": limit,
+            "pages": pages
+        }
+        
+    except Exception as e:
+        logger.error(f"Error searching clients: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error searching clients: {str(e)}"
+        )
 
 # GET todos los clientes con paginación
 @router.get("", response_model=ClientListResponseSchema)
