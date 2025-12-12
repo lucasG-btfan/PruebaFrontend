@@ -1,5 +1,5 @@
 from typing import Optional, TYPE_CHECKING
-from pydantic import Field
+from pydantic import Field, BaseModel
 
 from schemas.base_schema import BaseSchema
 
@@ -28,8 +28,8 @@ class ReviewSchema(BaseSchema):
         description="Product ID reference (required)"
     )
 
-    product: Optional['ProductSchema'] = None
+    product: Optional["ProductSchema"] = None  # Usa comillas para la referencia
 
-# Actualiza las referencias después de definir la clase
-from schemas.product_schema import ProductSchema
+# Importa y actualiza las referencias después de definir la clase
+from schemas import product_schema
 ReviewSchema.update_forward_refs()
