@@ -7,7 +7,7 @@ from config.database_render import get_db
 from schemas.order_schema import OrderCreateSchema
 from models.order import OrderModel
 from models.client import ClientModel
-from models.enums import DeliveryMethod
+from models.enums import DeliveryMethod, Status
 import logging
 
 logger = logging.getLogger(__name__)
@@ -81,19 +81,26 @@ async def create_order(
     try:
         logger.info(f"Recibiendo orden: {order_data.dict()}")
 
+        # 1. Verificar cliente
         client = db.query(ClientModel).filter(ClientModel.id_key == order_data.client_id).first()
         if not client:
             raise HTTPException(status_code=400, detail=f"Cliente con ID {order_data.client_id} no encontrado")
 
-        # 2. Mapea el valor entero al nombre del ENUM
-        delivery_method_value = order_data.delivery_method
+        # 2. Mapear delivery_method (número → nombre ENUM)
         try:
-            delivery_method_name = DeliveryMethod(delivery_method_value).name
+            delivery_method_name = DeliveryMethod(order_data.delivery_method).name
         except ValueError:
-            # Si el valor no es válido, usa uno por defecto
             delivery_method_name = DeliveryMethod.DRIVE_THRU.name
-            logger.warning(f"Método de entrega inválido {delivery_method_value}, usando DRIVE_THRU por defecto")
+            logger.warning(f"Método de entrega inválido {order_data.delivery_method}, usando DRIVE_THRU por defecto")
 
+        # 3. Mapear status (número → nombre ENUM) - ¡NUEVO!
+        try:
+            status_name = Status(order_data.status).name
+        except ValueError:
+            status_name = Status.PENDING.name
+            logger.warning(f"Status inválido {order_data.status}, usando PENDING por defecto")
+
+        # 4. Insertar orden
         result = db.execute(text("""
             INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id)
             VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id)
@@ -101,15 +108,16 @@ async def create_order(
         """), {
             "date": datetime.utcnow(),
             "total": order_data.total,
-            "delivery_method": delivery_method_name,  # Usa el nombre del enum, no el número
-            "status": 1,
+            "delivery_method": delivery_method_name,
+            "status": status_name,  # ¡Usando el nombre mapeado!
             "client_id_key": order_data.client_id,
-            "bill_id": order_data.bill_id  # Puede ser None
+            "bill_id": order_data.bill_id
         })
 
         order_id = result.scalar()
         logger.info(f"Orden creada con ID: {order_id}")
 
+        # 5. Insertar detalles si existen
         if hasattr(order_data, 'order_details') and order_data.order_details:
             for detail in order_data.order_details:
                 db.execute(text("""
