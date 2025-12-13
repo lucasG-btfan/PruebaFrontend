@@ -99,7 +99,7 @@ async def create_order(
 
         now = datetime.utcnow()
         result = db.execute(text("""
-            INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id, created_at)
+            INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id, created_at, updated_at)
             VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id, :created_at, :updated_at)
             RETURNING id_key
         """), {
@@ -111,7 +111,7 @@ async def create_order(
             "bill_id": order_data.bill_id,
             "created_at": now,
             "updated_at": now   
-        }),
+        })
 
         order_id = result.scalar()
         logger.info(f"Orden creada con ID: {order_id}")
