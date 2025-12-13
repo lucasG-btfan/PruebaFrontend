@@ -23,7 +23,7 @@ class OrderDetailCreateSchema(BaseModel):
 class OrderCreateSchema(BaseModel):
     """Schema for creating an order."""
     client_id: int = Field(..., description="Client ID")
-    bill_id: Optional[int] = Field(None, description="Bill ID")
+    bill_id: Optional[int] = None
     total: float = Field(..., gt=0, description="Order total")
     delivery_method: int = Field(1, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
     status: Optional[int] = Field(1, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")

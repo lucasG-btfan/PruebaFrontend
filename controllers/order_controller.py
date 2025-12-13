@@ -89,18 +89,17 @@ async def create_order(
         order_number = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
 
         result = db.execute(text("""
-            INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id, order_number)
-            VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id, :order_number)
-            RETURNING id_key
-        """), {
-            "date": datetime.utcnow(),
-            "total": order_data.total,
-            "delivery_method": order_data.delivery_method,
-            "status": 1,  # Pending
-            "client_id_key": order_data.client_id,  
-            "bill_id": order_data.bill_id,
-            "order_number": order_number
-        })
+        INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id)
+        VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id)
+        RETURNING id_key
+    """), {
+        "date": datetime.utcnow(),
+        "total": order_data.total,
+        "delivery_method": order_data.delivery_method,
+        "status": 1,
+        "client_id_key": order_data.client_id,
+        "bill_id": order_data.bill_id  # Puede ser None
+    })
 
         order_id = result.scalar()
         logger.info(f"Orden creada con ID: {order_id}")
