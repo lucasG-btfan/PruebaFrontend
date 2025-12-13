@@ -86,32 +86,34 @@ async def create_order(
         if not client:
             raise HTTPException(status_code=400, detail=f"Cliente con ID {order_data.client_id} no encontrado")
 
-        # 2. Mapear delivery_method (número → nombre ENUM)
+        # 2. Mapear delivery_method
         try:
             delivery_method_name = DeliveryMethod(order_data.delivery_method).name
         except ValueError:
             delivery_method_name = DeliveryMethod.DRIVE_THRU.name
             logger.warning(f"Método de entrega inválido {order_data.delivery_method}, usando DRIVE_THRU por defecto")
 
-        # 3. Mapear status (número → nombre ENUM) - ¡NUEVO!
+        # 3. Mapear status
         try:
             status_name = Status(order_data.status).name
         except ValueError:
             status_name = Status.PENDING.name
             logger.warning(f"Status inválido {order_data.status}, usando PENDING por defecto")
 
-        # 4. Insertar orden
+        # 4. Insertar orden - CON created_at
+        now = datetime.utcnow()
         result = db.execute(text("""
-            INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id)
-            VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id)
+            INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id, created_at)
+            VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id, :created_at)
             RETURNING id_key
         """), {
-            "date": datetime.utcnow(),
+            "date": now,
             "total": order_data.total,
             "delivery_method": delivery_method_name,
-            "status": status_name,  # ¡Usando el nombre mapeado!
+            "status": status_name,
             "client_id_key": order_data.client_id,
-            "bill_id": order_data.bill_id
+            "bill_id": order_data.bill_id,
+            "created_at": now  # ¡IMPORTANTE!
         })
 
         order_id = result.scalar()
@@ -139,7 +141,7 @@ async def create_order(
             "message": "Orden creada exitosamente",
             "order_id": order_id,
             "id_key": order_id,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": now.isoformat()
         }
 
     except HTTPException:
