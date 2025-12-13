@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from config.database_render import get_db
-from schemas.order_schema import OrderCreateSchema
+from schemas.order_schema import OrderCreateSchema, OrderUpdateSchema
 from models.order import OrderModel
 from models.client import ClientModel
 from models.enums import DeliveryMethod, Status
@@ -81,30 +81,26 @@ async def create_order(
     try:
         logger.info(f"Recibiendo orden: {order_data.dict()}")
 
-        # 1. Verificar cliente
         client = db.query(ClientModel).filter(ClientModel.id_key == order_data.client_id).first()
         if not client:
             raise HTTPException(status_code=400, detail=f"Cliente con ID {order_data.client_id} no encontrado")
 
-        # 2. Mapear delivery_method
         try:
             delivery_method_name = DeliveryMethod(order_data.delivery_method).name
         except ValueError:
             delivery_method_name = DeliveryMethod.DRIVE_THRU.name
             logger.warning(f"Método de entrega inválido {order_data.delivery_method}, usando DRIVE_THRU por defecto")
 
-        # 3. Mapear status
         try:
             status_name = Status(order_data.status).name
         except ValueError:
             status_name = Status.PENDING.name
             logger.warning(f"Status inválido {order_data.status}, usando PENDING por defecto")
 
-        # 4. Insertar orden - CON created_at
         now = datetime.utcnow()
         result = db.execute(text("""
             INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id, created_at)
-            VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id, :created_at)
+            VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id, :created_at, :updated_at)
             RETURNING id_key
         """), {
             "date": now,
@@ -113,13 +109,13 @@ async def create_order(
             "status": status_name,
             "client_id_key": order_data.client_id,
             "bill_id": order_data.bill_id,
-            "created_at": now  # ¡IMPORTANTE!
-        })
+            "created_at": now,
+            "updated_at": now   
+        }),
 
         order_id = result.scalar()
         logger.info(f"Orden creada con ID: {order_id}")
 
-        # 5. Insertar detalles si existen
         if hasattr(order_data, 'order_details') and order_data.order_details:
             for detail in order_data.order_details:
                 db.execute(text("""
@@ -219,3 +215,93 @@ async def get_order(order_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error obteniendo orden {order_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/{order_id}", response_model=Dict[str, Any])
+async def update_order(
+    order_id: int,
+    order_data: OrderUpdateSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Actualizar una orden existente.
+    Permite modificar: status, delivery_method, total, client_id, bill_id, notes.
+    """
+    try:
+        logger.info(f"Actualizando orden ID {order_id} con datos: {order_data.model_dump()}")
+
+        existing_order = db.execute(text("""
+            SELECT id_key FROM orders WHERE id_key = :order_id
+        """), {"order_id": order_id}).fetchone()
+
+        if not existing_order:
+            raise HTTPException(status_code=404, detail=f"Orden con ID {order_id} no encontrada")
+
+        delivery_method_name = None
+        if order_data.delivery_method is not None:
+            try:
+                delivery_method_name = DeliveryMethod(order_data.delivery_method).name
+            except ValueError:
+                delivery_method_name = DeliveryMethod.DRIVE_THRU.name
+                logger.warning(f"Método de entrega inválido {order_data.delivery_method}, usando DRIVE_THRU por defecto")
+
+        status_name = None
+        if order_data.status is not None:
+            try:
+                status_name = Status(order_data.status).name
+            except ValueError:
+                status_name = Status.PENDING.name
+                logger.warning(f"Status inválido {order_data.status}, usando PENDING por defecto")
+
+        update_fields = {
+            "updated_at": datetime.utcnow() 
+        }
+
+        if order_data.status is not None:
+            update_fields["status"] = status_name
+
+        if order_data.delivery_method is not None:
+            update_fields["delivery_method"] = delivery_method_name
+
+        if order_data.total is not None:
+            update_fields["total"] = order_data.total
+
+        if order_data.client_id is not None:
+            update_fields["client_id_key"] = order_data.client_id
+
+        if order_data.bill_id is not None:
+            update_fields["bill_id"] = order_data.bill_id
+
+        if order_data.notes is not None:
+            update_fields["notes"] = order_data.notes
+
+        set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
+        query = f"""
+            UPDATE orders
+            SET {set_clause}
+            WHERE id_key = :order_id
+            RETURNING id_key
+        """
+        update_fields["order_id"] = order_id
+
+        result = db.execute(text(query), update_fields)
+        updated_order_id = result.scalar()
+
+        if not updated_order_id:
+            raise HTTPException(status_code=404, detail=f"No se pudo actualizar la orden con ID {order_id}")
+
+        db.commit()
+
+        return {
+            "success": True,
+            "message": f"Orden {order_id} actualizada exitosamente",
+            "order_id": updated_order_id,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error actualizando orden {order_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error actualizando orden: {str(e)}")
