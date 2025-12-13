@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, status
-from typing import  Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -7,12 +7,13 @@ from config.database_render import get_db
 from schemas.order_schema import OrderCreateSchema
 from models.order import OrderModel
 from models.client import ClientModel
+from models.enums import DeliveryMethod
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["Orders"])  
+router = APIRouter(tags=["Orders"])
 
-@router.get("/test") 
+@router.get("/test")
 async def test_orders():
     return {"message": "Orders endpoint working ✅"}
 
@@ -45,13 +46,13 @@ async def get_orders(
         orders = []
         for row in result:
             orders.append({
-                "id": row.id_key,  
+                "id": row.id_key,
                 "id_key": row.id_key,
                 "date": row.date.isoformat() if row.date else None,
                 "total": row.total,
                 "delivery_method": row.delivery_method,
                 "status": row.status,
-                "client_id": row.client_id_key, 
+                "client_id": row.client_id_key,
                 "client_name": row.client_name,
                 "bill_id": row.bill_id,
                 "order_details": row.order_details if row.order_details and row.order_details[0].get('product_id') else []
@@ -84,22 +85,27 @@ async def create_order(
         if not client:
             raise HTTPException(status_code=400, detail=f"Cliente con ID {order_data.client_id} no encontrado")
 
-        from datetime import datetime
-        import random
-        order_number = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        # 2. Mapea el valor entero al nombre del ENUM
+        delivery_method_value = order_data.delivery_method
+        try:
+            delivery_method_name = DeliveryMethod(delivery_method_value).name
+        except ValueError:
+            # Si el valor no es válido, usa uno por defecto
+            delivery_method_name = DeliveryMethod.DRIVE_THRU.name
+            logger.warning(f"Método de entrega inválido {delivery_method_value}, usando DRIVE_THRU por defecto")
 
         result = db.execute(text("""
-        INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id)
-        VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id)
-        RETURNING id_key
-    """), {
-        "date": datetime.utcnow(),
-        "total": order_data.total,
-        "delivery_method": order_data.delivery_method,
-        "status": 1,
-        "client_id_key": order_data.client_id,
-        "bill_id": order_data.bill_id  # Puede ser None
-    })
+            INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id)
+            VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id)
+            RETURNING id_key
+        """), {
+            "date": datetime.utcnow(),
+            "total": order_data.total,
+            "delivery_method": delivery_method_name,  # Usa el nombre del enum, no el número
+            "status": 1,
+            "client_id_key": order_data.client_id,
+            "bill_id": order_data.bill_id  # Puede ser None
+        })
 
         order_id = result.scalar()
         logger.info(f"Orden creada con ID: {order_id}")
@@ -124,8 +130,7 @@ async def create_order(
             "success": True,
             "message": "Orden creada exitosamente",
             "order_id": order_id,
-            "id_key": order_id,  
-            "order_number": order_number,
+            "id_key": order_id,
             "created_at": datetime.utcnow().isoformat()
         }
 
@@ -199,7 +204,6 @@ async def get_order(order_id: int, db: Session = Depends(get_db)):
             "status": row.status,
             "client_id": row.client_id,
             "bill_id": row.bill_id,
-            "order_number": row.order_number,
             "order_details": row.order_details if row.order_details[0]['product_id'] else []
         }
     except Exception as e:
