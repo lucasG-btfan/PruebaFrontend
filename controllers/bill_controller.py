@@ -1,67 +1,46 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Dict, Any, List
+# controllers/bill_controller.py
+from fastapi import APIRouter, HTTPException, Query, Depends
+from typing import List
 from datetime import datetime
+from sqlalchemy.orm import Session
+from config.database import get_db
+from models.bill import Bill
+from schemas.bill_schema import BillCreate, BillResponse
+import services.bill_service as bill_service
 
-# Router para facturas
 router = APIRouter(prefix="/api/v1/bills", tags=["Bills"])
 
-# Mock data para desarrollo
-mock_bills = [
-    {
-        "id": 1,
-        "bill_number": "BILL-2024-001",
-        "date": "2024-01-01",
-        "total": 1499.97,
-        "payment_type": 1,  # 1=CASH, 2=CREDIT_CARD, 3=DEBIT_CARD, 4=TRANSFER
-        "client.id_key": 1,
-        "discount": 0,
-        "created_at": "2024-01-01T10:00:00Z"
-    }
-]
-
-@router.post("", response_model=Dict[str, Any], status_code=201)
-async def create_bill(bill_data: Dict[str, Any]):
+@router.post("", response_model=BillResponse, status_code=201)
+async def create_bill(bill_data: BillCreate, db: Session = Depends(get_db)):
     """Crear una nueva factura"""
     try:
-        # Validación básica
-        required_fields = ["bill_number", "date", "total", "payment_type", "client_id"]
-        for field in required_fields:
-            if field not in bill_data:
-                raise HTTPException(status_code=400, detail=f"{field} is required")
-
-        new_bill = {
-            "id": len(mock_bills) + 1,
-            **bill_data,
-            "created_at": datetime.utcnow().isoformat() + "Z"
-        }
-
-        mock_bills.append(new_bill)
-
-        return {
-            "message": "Bill created successfully",
-            "bill_id": new_bill["id"],
-            "bill": new_bill
-        }
+        bill = bill_service.create_bill(db, bill_data)
+        return bill
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("", response_model=Dict[str, Any])
+@router.get("", response_model=List[BillResponse])
 async def get_bills(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100)
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
     """Obtener lista de facturas"""
-    return {
-        "bills": mock_bills[skip:skip + limit],
-        "total": len(mock_bills),
-        "skip": skip,
-        "limit": limit
-    }
+    bills = bill_service.get_bills(db, skip=skip, limit=limit)
+    return bills
 
-@router.get("/{bill_id}", response_model=Dict[str, Any])
-async def get_bill(bill_id: int):
+@router.get("/{bill_id}", response_model=BillResponse)
+async def get_bill(bill_id: int, db: Session = Depends(get_db)):
     """Obtener una factura específica"""
-    bill = next((b for b in mock_bills if b["id"] == bill_id), None)
+    bill = bill_service.get_bill_by_id(db, bill_id)
     if not bill:
         raise HTTPException(status_code=404, detail="Bill not found")
+    return bill
+
+@router.get("/order/{order_id}", response_model=BillResponse)
+async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):
+    """Obtener factura por ID de orden"""
+    bill = bill_service.get_bill_by_order_id(db, order_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found for this order")
     return bill
