@@ -1,6 +1,9 @@
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 from pydantic import Field, BaseModel, validator
+
+if TYPE_CHECKING:
+    from schemas.order_detail_schema import OrderDetailSchema
 
 class OrderBaseSchema(BaseModel):
     """Base schema for Order."""
@@ -58,14 +61,13 @@ class OrderUpdateSchema(BaseModel):
         from_attributes = True
 
 class OrderSchema(OrderBaseSchema):
+    """Full Order schema for responses."""
     id_key: int
     order_number: Optional[str] = None
     date: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-
+    # order_details: Optional[List['OrderDetailSchema']] = [] 
+    
     class Config:
         from_attributes = True
-
-# Actualizar referencias hacia adelante
-OrderSchema.update_forward_refs()

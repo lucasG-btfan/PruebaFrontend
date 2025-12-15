@@ -4,46 +4,43 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from config.database_render import get_db
-from schemas.order_schema import OrderCreateSchema, OrderUpdateSchema
+from schemas.order_schema import OrderCreateSchema, OrderUpdateSchema, OrderSchema
 from models.order import OrderModel
+from services.order_service import OrderService
 from models.client import ClientModel
 from models.enums import DeliveryMethod, Status
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["Orders"])
-
-from schemas.order_schema import (
-    OrderCreateSchema, 
-    OrderSchema, 
-    OrderUpdateSchema,
-    OrderDetailCreateSchema
-)
-from services.order_service import OrderService
-
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 @router.post("/", response_model=OrderSchema, status_code=201)
 def create_order(
-    order_data: OrderCreateSchema,  # ✅ Recibir OrderCreateSchema
+    order_data: OrderCreateSchema,
     db: Session = Depends(get_db)
 ):
     """
     Create a new order with order details
     """
     try:
+        logger.info(f"Creating order for client {order_data.client_id}")
+        
         order_service = OrderService(db)
         
-        # ✅ Usar el nuevo método que maneja todo
-        order = order_service.create_order_with_details(order_data.dict())
+        # Convertir a dict para evitar problemas de serialización
+        order_dict = order_data.model_dump()
+        order = order_service.create_order_with_details(order_dict)
         
+        logger.info(f"Order created successfully: {order.id_key}")
         return order
         
     except Exception as e:
+        logger.error(f"Error creating order: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=400, 
             detail=f"Error creating order: {str(e)}"
         )
+
 
 @router.get("/active", response_model=Dict[str, Any])
 async def get_active_orders(db: Session = Depends(get_db)):
@@ -135,7 +132,7 @@ async def get_order(order_id: int, db: Session = Depends(get_db)):
         logger.error(f"Error obteniendo orden {order_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error del servidor: {str(e)}")
 
-@router.put("/{order_id}", response_model=Dict[str, Any])
+@router.put("/{order_id}", response_model=OrderSchema)
 async def update_order(
     order_id: int,
     order_data: OrderUpdateSchema,
@@ -143,84 +140,23 @@ async def update_order(
 ):
     """
     Actualizar una orden existente.
-    Permite modificar: status, delivery_method, total, client_id, bill_id, notes.
     """
     try:
-        logger.info(f"Actualizando orden ID {order_id} con datos: {order_data.model_dump()}")
-
-        existing_order = db.execute(text("""
-            SELECT id_key FROM orders WHERE id_key = :order_id
-        """), {"order_id": order_id}).fetchone()
-
-        if not existing_order:
-            raise HTTPException(status_code=404, detail=f"Orden con ID {order_id} no encontrada")
-
-        delivery_method_name = None
-        if order_data.delivery_method is not None:
-            try:
-                delivery_method_name = DeliveryMethod(order_data.delivery_method).name
-            except ValueError:
-                delivery_method_name = DeliveryMethod.DRIVE_THRU.name
-                logger.warning(f"Método de entrega inválido {order_data.delivery_method}, usando DRIVE_THRU por defecto")
-
-        status_name = None
-        if order_data.status is not None:
-            try:
-                status_name = Status(order_data.status).name
-            except ValueError:
-                status_name = Status.PENDING.name
-                logger.warning(f"Status inválido {order_data.status}, usando PENDING por defecto")
-
-        update_fields = {
-            "updated_at": datetime.utcnow() 
-        }
-
-        if order_data.status is not None:
-            update_fields["status"] = status_name
-
-        if order_data.delivery_method is not None:
-            update_fields["delivery_method"] = delivery_method_name
-
-        if order_data.total is not None:
-            update_fields["total"] = order_data.total
-
-        if order_data.client_id is not None:
-            update_fields["client_id_key"] = order_data.client_id
-
-        if order_data.bill_id is not None:
-            update_fields["bill_id"] = order_data.bill_id
-
-        if order_data.notes is not None:
-            update_fields["notes"] = order_data.notes
-
-        set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
-        query = f"""
-            UPDATE orders
-            SET {set_clause}
-            WHERE id_key = :order_id
-            RETURNING id_key
-        """
-        update_fields["order_id"] = order_id
-
-        result = db.execute(text(query), update_fields)
-        updated_order_id = result.scalar()
-
-        if not updated_order_id:
-            raise HTTPException(status_code=404, detail=f"No se pudo actualizar la orden con ID {order_id}")
-
-        db.commit()
-
-        return {
-            "success": True,
-            "message": f"Orden {order_id} actualizada exitosamente",
-            "order_id": updated_order_id,
-            "updated_at": datetime.utcnow().isoformat()
-        }
-
+        logger.info(f"Updating order ID {order_id}")
+        
+        order_service = OrderService(db)
+        
+        # Convertir a dict
+        update_dict = order_data.model_dump(exclude_none=True)
+        order = order_service.update(order_id, update_dict)
+        
+        return order
+        
     except HTTPException:
-        db.rollback()
         raise
     except Exception as e:
-        db.rollback()
-        logger.error(f"Error actualizando orden {order_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error actualizando orden: {str(e)}")
+        logger.error(f"Error updating order {order_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error updating order: {str(e)}"
+        )
