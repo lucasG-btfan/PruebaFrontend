@@ -3,6 +3,7 @@ import logging
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from models.product import ProductModel
+from schemas.product_schema import ProductSchema, ProductCreateSchema, ProductUpdateSchema 
 from repositories.product_repository import ProductRepository
 from services.base_service_impl import BaseServiceImpl
 from services.cache_service import cache_service
@@ -15,27 +16,19 @@ class ProductService(BaseServiceImpl):
     """Service for Product entity with caching."""
 
     def __init__(self, db: Session):
-        # Importar aquí para evitar importaciones circulares
-        from schemas.product_schema import ProductSchema
         super().__init__(
             repository_class=ProductRepository,
             model=ProductModel,
-            schema=ProductSchema,
+            schema=ProductSchema,  
             db=db
         )
         self.cache = cache_service
         self.cache_prefix = "products"
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List['ProductSchema']: 
+    def get_all(self, skip: int = 0, limit: int = 100) -> List[ProductSchema]: 
         """
         Get all products with caching
-
-        Cache key pattern: products:list:skip:{skip}:limit:{limit}
-        TTL: 5 minutes (default REDIS_CACHE_TTL)
         """
-        # Importar localmente
-        from schemas.product_schema import ProductSchema
-        
         # Build cache key
         cache_key = self.cache.build_key(
             self.cache_prefix,
@@ -60,16 +53,10 @@ class ProductService(BaseServiceImpl):
 
         return products
 
-    def get_one(self, id_key: int) -> 'ProductSchema':  
+    def get_one(self, id_key: int) -> ProductSchema:  
         """
         Get single product by ID with caching
-
-        Cache key pattern: products:id:{id_key}
-        TTL: 5 minutes
         """
-        # Importar localmente
-        from schemas.product_schema import ProductSchema
-        
         cache_key = self.cache.build_key(self.cache_prefix, "id", id=id_key)
 
         # Try cache first
@@ -87,12 +74,10 @@ class ProductService(BaseServiceImpl):
 
         return product
 
-    def save(self, schema: 'ProductSchema') -> 'ProductSchema':  
+    def save(self, schema: ProductCreateSchema) -> ProductSchema: 
         """
         Create new product and invalidate list cache
         """
-        # Importar localmente
-        from schemas.product_schema import ProductSchema
         product = super().save(schema)
 
         # Invalidate list cache (all paginated lists)
@@ -100,23 +85,10 @@ class ProductService(BaseServiceImpl):
 
         return product
 
-    def update(self, id_key: int, schema: 'ProductSchema') -> 'ProductSchema':  
+    def update(self, id_key: int, schema: ProductUpdateSchema) -> ProductSchema: 
         """
         Update product with transactional cache invalidation
-
-        Args:
-            id_key: Product ID to update
-            schema: Validated ProductSchema with new data
-
-        Returns:
-            Updated product schema
-
-        Raises:
-            InstanceNotFoundError: If product doesn't exist
-            ValueError: If validation fails
         """
-        from schemas.product_schema import ProductSchema
-        
         cache_key = self.cache.build_key(self.cache_prefix, "id", id=id_key)
 
         try:
@@ -133,13 +105,7 @@ class ProductService(BaseServiceImpl):
             raise
 
     def delete(self, id_key: int) -> None:
-        """
-        Delete product with validation to prevent loss of sales history
-
-        Raises:
-            ValueError: If product has associated order details (sales history)
-            InstanceNotFoundError: If product doesn't exist
-        """
+        """Delete product with validation"""
         from models.order_detail import OrderDetailModel
         from sqlalchemy import select
 
