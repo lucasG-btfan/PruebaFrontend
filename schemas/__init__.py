@@ -18,7 +18,7 @@ from .bill_schema import (
 
 from .order_detail_schema import(
     OrderDetailBaseSchema,
-    OrderCreateSchema,
+    OrderDetailCreateSchema,
     OrderDetailUpdateSchema
 )
 
@@ -56,7 +56,7 @@ __all__ = [
     'OrderUpdateSchema',
     'OrderSchema',
     'OrderDetailBaseSchema',
-    'OrderCreateSchema',
+    'OrderDetailCreateSchema',
     'OrderDetailCreateSchema',
     'OrderDetailUpdateSchema',
     
