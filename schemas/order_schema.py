@@ -57,16 +57,15 @@ class OrderUpdateSchema(BaseModel):
     class Config:
         from_attributes = True
 
-class OrderSchema(OrderBaseSchema): 
-    """Full Order schema."""
+class OrderSchema(OrderBaseSchema):
     id_key: int
     order_number: Optional[str] = None
     date: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    # order_details: Optional[List['OrderDetailSchema']] = []  
-    
+
     class Config:
         from_attributes = True
 
+# Actualizar referencias hacia adelante
 OrderSchema.update_forward_refs()
