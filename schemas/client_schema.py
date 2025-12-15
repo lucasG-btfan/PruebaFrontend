@@ -61,7 +61,6 @@ class ClientResponseSchema(ClientBaseSchema):
     class Config:
         from_attributes = True
 
-# AÑADE ESTE ESQUEMA - ES LO QUE TU FRONTEND ESPERA
 class ClientListResponseSchema(BaseModel):
     items: List[ClientResponseSchema]
     total: int
