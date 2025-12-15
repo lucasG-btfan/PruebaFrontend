@@ -5,3 +5,4 @@ psycopg2-binary==2.9.9
 pydantic[email]==2.5.0  # ← CON [email]
 python-dotenv==1.0.0
 alembic==1.12.1
+redis==5.0.0

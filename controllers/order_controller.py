@@ -13,138 +13,37 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Orders"])
 
-@router.get("/test")
-async def test_orders():
-    return {"message": "Orders endpoint working ✅"}
+from schemas.order_schema import (
+    OrderCreateSchema, 
+    OrderSchema, 
+    OrderUpdateSchema,
+    OrderDetailCreateSchema
+)
+from services.order_service import OrderService
 
-@router.get("", response_model=Dict[str, Any])
-async def get_orders(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+router = APIRouter(prefix="/orders", tags=["orders"])
+
+@router.post("/", response_model=OrderSchema, status_code=201)
+def create_order(
+    order_data: OrderCreateSchema,  # ✅ Recibir OrderCreateSchema
     db: Session = Depends(get_db)
 ):
-    """Obtener lista de órdenes"""
+    """
+    Create a new order with order details
+    """
     try:
-        result = db.execute(text("""
-            SELECT 
-                o.*,
-                c.name as client_name,
-                c.lastname as client_lastname,
-                COUNT(od.id_key) as items_count
-            FROM orders o
-            LEFT JOIN clients c ON o.client_id_key = c.id_key
-            LEFT JOIN order_details od ON o.id_key = od.order_id
-            GROUP BY o.id_key, c.name, c.lastname
-            ORDER BY o.date DESC NULLS LAST, o.created_at DESC
-            LIMIT :limit OFFSET :skip
-        """), {"limit": limit, "skip": skip})
-
-        orders = []
-        for row in result:
-            orders.append({
-                "id": row.id_key,
-                "id_key": row.id_key,
-                "date": row.date.isoformat() if hasattr(row.date, 'isoformat') else str(row.date),
-                "total": float(row.total) if row.total else 0.0,
-                "delivery_method": row.delivery_method,
-                "status": row.status,
-                "client_id": row.client_id_key,
-                "client_id_key": row.client_id_key,
-                "client_name": f"{row.client_name or ''} {row.client_lastname or ''}".strip(),
-                "bill_id": row.bill_id,
-                "items_count": row.items_count,
-                "created_at": row.created_at.isoformat() if hasattr(row.created_at, 'isoformat') else str(row.created_at)
-            })
-
-        count_result = db.execute(text("SELECT COUNT(*) as total FROM orders"))
-        total = count_result.scalar() or 0
-
-        return {
-            "orders": orders,
-            "total": total,
-            "skip": skip,
-            "limit": limit
-        }
-
+        order_service = OrderService(db)
+        
+        # ✅ Usar el nuevo método que maneja todo
+        order = order_service.create_order_with_details(order_data.dict())
+        
+        return order
+        
     except Exception as e:
-        logger.error(f"Error en get_orders: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error del servidor: {str(e)}")
-
-@router.post("", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
-async def create_order(
-    order_data: OrderCreateSchema,
-    db: Session = Depends(get_db)
-):
-    """Crear una nueva orden"""
-    try:
-        logger.info(f"Recibiendo orden: {order_data.dict()}")
-
-        client = db.query(ClientModel).filter(ClientModel.id_key == order_data.client_id).first()
-        if not client:
-            raise HTTPException(status_code=400, detail=f"Cliente con ID {order_data.client_id} no encontrado")
-
-        try:
-            delivery_method_name = DeliveryMethod(order_data.delivery_method).name
-        except ValueError:
-            delivery_method_name = DeliveryMethod.DRIVE_THRU.name
-            logger.warning(f"Método de entrega inválido {order_data.delivery_method}, usando DRIVE_THRU por defecto")
-
-        try:
-            status_name = Status(order_data.status).name
-        except ValueError:
-            status_name = Status.PENDING.name
-            logger.warning(f"Status inválido {order_data.status}, usando PENDING por defecto")
-
-        now = datetime.utcnow()
-        result = db.execute(text("""
-            INSERT INTO orders (date, total, delivery_method, status, client_id_key, bill_id, created_at, updated_at)
-            VALUES (:date, :total, :delivery_method, :status, :client_id_key, :bill_id, :created_at, :updated_at)
-            RETURNING id_key
-        """), {
-            "date": now,
-            "total": order_data.total,
-            "delivery_method": delivery_method_name,
-            "status": status_name,
-            "client_id_key": order_data.client_id,
-            "bill_id": order_data.bill_id,
-            "created_at": now,
-            "updated_at": now   
-        })
-
-        order_id = result.scalar()
-        logger.info(f"Orden creada con ID: {order_id}")
-
-        if hasattr(order_data, 'order_details') and order_data.order_details:
-            for detail in order_data.order_details:
-                db.execute(text("""
-                    INSERT INTO order_details (order_id, product_id, quantity, price)
-                    VALUES (:order_id, :product_id, :quantity, :price)
-                """), {
-                    "order_id": order_id,
-                    "product_id": detail.product_id,
-                    "quantity": detail.quantity,
-                    "price": detail.price
-                })
-        else:
-            logger.warning("No order_details provided")
-
-        db.commit()
-
-        return {
-            "success": True,
-            "message": "Orden creada exitosamente",
-            "order_id": order_id,
-            "id_key": order_id,
-            "created_at": now.isoformat()
-        }
-
-    except HTTPException:
-        db.rollback()
-        raise
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error creando orden: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error creando orden: {str(e)}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Error creating order: {str(e)}"
+        )
 
 @router.get("/active", response_model=Dict[str, Any])
 async def get_active_orders(db: Session = Depends(get_db)):
