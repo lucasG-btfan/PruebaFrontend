@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Text, Integer, ForeignKey, CheckConstraint
+from sqlalchemy import Column, String, Float, Text, Integer, ForeignKey, CheckConstraint, DateTime, func
 from sqlalchemy.orm import relationship
 from models.base_model import BaseModel
 
@@ -11,6 +11,10 @@ class ProductModel(BaseModel):
     stock = Column(Integer, default=0, nullable=False, index=True)
     description = Column(Text)
     category_id = Column(Integer, ForeignKey('categories.id_key'), index=True)
+    sku = Column(String(100))
+    image_url = Column(String(500))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relaciones
     category = relationship('CategoryModel', back_populates='products', lazy='select')
