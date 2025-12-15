@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from models.bill import BillModel
 from repositories.bill_repository import BillRepository
-from schemas.bill_schema import BillSchema, BillCreate
+from schemas.bill_schema import BillCreate, BillResponse  # Cambiado de BillSchema a BillResponse
 from services.base_service_impl import BaseServiceImpl
 from datetime import datetime
 import uuid
@@ -11,7 +11,7 @@ class BillService(BaseServiceImpl):
         super().__init__(
             repository_class=BillRepository,
             model=BillModel,
-            schema=BillSchema,
+            schema=BillResponse,  # Cambiado de BillSchema a BillResponse
             db=db
         )
 
