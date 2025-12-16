@@ -14,7 +14,7 @@ from schemas.order_detail_schema import (
     OrderDetailSchema,
     OrderDetailCreateSchema,
     OrderDetailUpdateSchema,
-    OrderDetailBaseSchema
+    OrderDetailBase
 )
 
 __all__ = [
@@ -26,5 +26,5 @@ __all__ = [
     'OrderDetailSchema',
     'OrderDetailCreateSchema',
     'OrderDetailUpdateSchema',
-    'OrderDetailBaseSchema',
+    'OrderDetailBase',
 ]
