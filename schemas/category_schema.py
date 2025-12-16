@@ -21,7 +21,7 @@ class CategoryCreateSchema(CategoryBaseSchema):
 class CategoryUpdateSchema(BaseModel):
     """Schema for updating Category."""
     
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name: str | None = Field(None, min_length=1, max_length=100)
     
     class Config:
         from_attributes = True
@@ -31,8 +31,8 @@ class CategorySchema(CategoryBaseSchema):
     """Full Category schema WITHOUT circular references."""
     
     id_key: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at:datetime | None = None
     # REMOVER relación circular temporalmente
     # products: Optional[List[Dict]] = []
     

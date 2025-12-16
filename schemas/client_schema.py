@@ -6,9 +6,9 @@ from pydantic import BaseModel, EmailStr, Field
 class AddressSchema(BaseModel):
     id_key: int
     street: str
-    city: Optional[str] = None
-    state: Optional[str] = None
-    zip_code: Optional[str] = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
 
     class Config:
         from_attributes = True
@@ -17,28 +17,28 @@ class ClientBaseSchema(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     lastname: str = Field(..., min_length=1, max_length=100)
     email: EmailStr = Field(..., description="Email address of the client")
-    phone: Optional[str] = Field(None, max_length=20, description="Phone number")
-    company: Optional[str] = Field(None, max_length=100, description="Company name")
-    tax_id: Optional[str] = Field(None, max_length=50, description="Tax ID")
-    notes: Optional[str] = Field(None, max_length=500, description="Additional notes")
+    phone: str | None = Field(None, max_length=20, description="Phone number")
+    company: str | None = Field(None, max_length=100, description="Company name")
+    tax_id: str | None = Field(None, max_length=50, description="Tax ID")
+    notes: str | None = Field(None, max_length=500, description="Additional notes")
     is_active: bool = Field(default=True, description="Whether the client is active")
 
     class Config:
         from_attributes = True
 
 class ClientCreateSchema(ClientBaseSchema):
-    address: Optional[str] = Field(None, max_length=200, description="Client address as a single string")
+    address: str | None = Field(None, max_length=200, description="Client address as a single string")
 
 class ClientUpdateSchema(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    lastname: Optional[str] = Field(None, min_length=1, max_length=100)
-    email: Optional[EmailStr] = Field(None)
-    phone: Optional[str] = Field(None, max_length=20)
-    company: Optional[str] = Field(None, max_length=100)
-    tax_id: Optional[str] = Field(None, max_length=50)
-    notes: Optional[str] = Field(None, max_length=500)
-    is_active: Optional[bool] = Field(None)
-    address: Optional[str] = Field(None, max_length=200, description="Client address as a single string")
+    name: str | None = Field(None, min_length=1, max_length=100)
+    lastname: str | None = Field(None, min_length=1, max_length=100)
+    email: EmailStr | None = Field(None)
+    phone: str | None = Field(None, max_length=20)
+    company: str | None = Field(None, max_length=100)
+    tax_id: str | None = Field(None, max_length=50)
+    notes: str | None = Field(None, max_length=500)
+    is_active: bool | None = Field(None)
+    address: str | None = Field(None, max_length=200, description="Client address as a single string")
 
     class Config:
         from_attributes = True
@@ -48,14 +48,14 @@ class ClientResponseSchema(ClientBaseSchema):
     name: str
     lastname: str
     email: EmailStr
-    phone: Optional[str] = None
-    company: Optional[str] = None
-    tax_id: Optional[str] = None
-    notes: Optional[str] = None
+    phone: str | None = None
+    company: str | None = None
+    tax_id: str | None = None
+    notes: str | None = None
     is_active: bool
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    deleted_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    deleted_at: datetime | None = None
     addresses: Optional[List[AddressSchema]] = None
 
     class Config:

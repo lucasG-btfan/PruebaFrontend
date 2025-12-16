@@ -22,7 +22,7 @@ class OrderDetailCreateSchema(BaseModel):
     """Schema for creating order details."""
     product_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
-    price: Optional[float] = Field(None, gt=0)
+    price: float | None = Field(None, gt=0)
 
     class Config:
         from_attributes = True
@@ -30,9 +30,9 @@ class OrderDetailCreateSchema(BaseModel):
 
 class OrderDetailUpdateSchema(BaseModel):
     """Schema for updating order details."""
-    product_id: Optional[int] = Field(None, gt=0)
-    quantity: Optional[int] = Field(None, gt=0)
-    price: Optional[float] = Field(None, gt=0)
+    product_id: int |None = Field(None, gt=0)
+    quantity: int |None = Field(None, gt=0)
+    price: float | None = Field(None, gt=0)
     
     class Config:
         from_attributes = True
@@ -42,13 +42,13 @@ class OrderDetailSchema(OrderDetailBase):
     """Complete order detail schema."""
     id_key: int
     order_id: int
-    product_name: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    product_name: str |None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     
     # Relaciones opcionales
-    order: Optional[OrderSchema] = None
-    product: Optional[ProductSchema] = None
+    order: OrderSchema | None = None
+    product: ProductSchema | None = None
     
     class Config:
         from_attributes = True

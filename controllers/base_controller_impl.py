@@ -1,5 +1,5 @@
 """Base controller implementation module with FastAPI dependency injection."""
-from typing import Type, List, Callable
+from typing import Type, List, Callable, Optional
 from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 from controllers.base_controller import BaseController

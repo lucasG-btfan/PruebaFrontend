@@ -11,8 +11,8 @@ class ProductBaseSchema(BaseModel):
     description: Optional[str] = Field(None, max_length=2000)
     price: float = Field(..., gt=0)
     stock: int = Field(..., ge=0)
-    sku: Optional[str] = Field(None, max_length=100)
-    category_id: Optional[int] = Field(None)
+    sku: str | None = Field(None, max_length=100)
+    category_id: int | None = Field(None)
     
     class Config:
         from_attributes = True
@@ -26,12 +26,12 @@ class ProductCreateSchema(ProductBaseSchema):
 class ProductUpdateSchema(BaseModel):
     """Schema for updating Product."""
     
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=2000)
-    price: Optional[float] = Field(None, gt=0)
-    stock: Optional[int] = Field(None, ge=0)
-    sku: Optional[str] = Field(None, max_length=100)
-    category_id: Optional[int] = Field(None)
+    name: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = Field(None, max_length=2000)
+    price: float | None= Field(None, gt=0)
+    stock: int | None = Field(None, ge=0)
+    sku: str | None = Field(None, max_length=100)
+    category_id: int | None = Field(None)
     
     class Config:
         from_attributes = True
@@ -41,8 +41,8 @@ class ProductSchema(ProductBaseSchema):
     """Full Product schema WITHOUT circular references."""
     
     id_key: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     
     class Config:
         from_attributes = True
