@@ -1,5 +1,5 @@
-# schemas/product_schema.py
 """Product schema with validation."""
+from __future__ import annotations
 from typing import Optional, List
 from datetime import datetime
 from pydantic import Field, BaseModel

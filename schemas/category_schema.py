@@ -1,6 +1,6 @@
-# schemas/category_schema.py
 """Category schema with validation."""
 from typing import Optional, List
+from __future__ import annotations
 from datetime import datetime
 from pydantic import Field, BaseModel
 

@@ -1,9 +1,8 @@
-# schemas/review_schema.py
 """Review schema with validation."""
-from typing import Optional
 from datetime import datetime
 from pydantic import Field, BaseModel
-
+from __future__ import annotations
+from typing import Optional, List
 
 class ReviewBaseSchema(BaseModel):
     """Base schema for Review."""
