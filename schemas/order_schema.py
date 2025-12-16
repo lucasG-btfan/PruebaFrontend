@@ -4,10 +4,9 @@ from datetime import datetime
 from pydantic import Field, BaseModel, validator
 
 if TYPE_CHECKING:
-    from .order_detail_schema import OrderDetailSchema
+    from .order_detail_schema import OrderDetailSchema 
 
 class OrderBaseSchema(BaseModel):
-    """Base schema for Order."""
     client_id: int = Field(..., description="Client ID")
     bill_id: Optional[int] = Field(None, description="Bill ID")
     total: float = Field(..., gt=0, description="Order total")
@@ -19,7 +18,6 @@ class OrderBaseSchema(BaseModel):
         from_attributes = True
 
 class OrderDetailCreateSchema(BaseModel):
-    """Schema for order detail creation."""
     product_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
     price: Optional[float] = Field(None, gt=0)
@@ -28,7 +26,6 @@ class OrderDetailCreateSchema(BaseModel):
         from_attributes = True
 
 class OrderCreateSchema(BaseModel):
-    """Schema for creating an order."""
     client_id: int = Field(..., description="Client ID")
     bill_id: Optional[int] = None
     total: float = Field(..., gt=0, description="Order total")
@@ -43,35 +40,15 @@ class OrderCreateSchema(BaseModel):
             raise ValueError('Total must be greater than 0')
         return round(v, 2)
 
-    @validator('order_details')
-    def validate_order_details(cls, v):
-        if v and len(v) == 0:
-            raise ValueError('Order must have at least one item')
-        return v
-
-    class Config:
-        from_attributes = True
-
-class OrderUpdateSchema(BaseModel):
-    """Schema for updating an order."""
-    client_id: Optional[int] = Field(None, description="Client ID")
-    bill_id: Optional[int] = Field(None, description="Bill ID")
-    total: Optional[float] = Field(None, gt=0, description="Order total")
-    delivery_method: Optional[int] = Field(None, description="Delivery method")
-    status: Optional[int] = Field(None, description="Order status")
-    notes: Optional[str] = Field(None, max_length=500, description="Order notes")
-
     class Config:
         from_attributes = True
 
 class OrderSchema(OrderBaseSchema):
-    """Full Order schema for responses."""
     id_key: int
     order_number: Optional[str] = None
     date: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    order_details: Optional[List['OrderDetailSchema']] = []
 
     class Config:
         from_attributes = True

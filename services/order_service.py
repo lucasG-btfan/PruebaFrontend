@@ -25,15 +25,6 @@ class OrderService:
         self._bill_repo = BillRepository(db)
 
     def create_simple_order(self, order_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Create a simple order without complex validation chains.
-
-        Args:
-            order_data: Dictionary with order data
-
-        Returns:
-            Created order as dict
-        """
         try:
             client_id = order_data.get('client_id')
             if not client_id:
@@ -53,8 +44,6 @@ class OrderService:
                 'bill_id': order_data.get('bill_id')
             }
 
-            logger.info(f"Creating order for client {client_id}")
-
             order = self._save_simple(order_dict)
             order_details = order_data.get('order_details', [])
             if order_details:
@@ -68,13 +57,13 @@ class OrderService:
                 except Exception as bill_error:
                     logger.warning(f"Could not generate bill: {bill_error}")
 
-            return self._order_to_dict(order)
+            return self._order_to_dict(order)  # Devuelve un dict, no un OrderSchema
 
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error creating order: {e}", exc_info=True)
             raise
-
+        
     def _save_simple(self, order_data: Dict[str, Any]) -> OrderModel:
         """Save order directly to database without complex schema validation."""
         order = OrderModel(**order_data)
@@ -123,9 +112,7 @@ class OrderService:
         return self._order_to_dict(order)
 
     def update(self, id_key: int, order_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Update order."""
         order = self._order_repo.find(id_key)
-
         for key, value in order_data.items():
             if hasattr(order, key) and value is not None:
                 setattr(order, key, value)
@@ -133,7 +120,6 @@ class OrderService:
         order.updated_at = datetime.utcnow()
         self.db.commit()
         self.db.refresh(order)
-
         return self._order_to_dict(order)
 
     def delete(self, id_key: int) -> bool:
