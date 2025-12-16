@@ -43,6 +43,18 @@ class OrderCreateSchema(BaseModel):
     class Config:
         from_attributes = True
 
+class OrderUpdateSchema(BaseModel):
+    """Schema for updating an order."""
+    client_id: Optional[int] = Field(None, description="Client ID")
+    bill_id: Optional[int] = Field(None, description="Bill ID")
+    total: Optional[float] = Field(None, gt=0, description="Order total")
+    delivery_method: Optional[int] = Field(None, description="Delivery method")
+    status: Optional[int] = Field(None, description="Order status")
+    notes: Optional[str] = Field(None, max_length=500, description="Order notes")
+    
+    class Config:
+        from_attributes = True
+
 class OrderSchema(OrderBaseSchema):
     id_key: int
     order_number: Optional[str] = None
