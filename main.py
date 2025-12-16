@@ -2,13 +2,7 @@ import os
 import logging
 from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
-
-from schemas import (
-    OrderSchema,
-    OrderCreateSchema,
-    OrderUpdateSchema,
-    OrderDetailSchema
-)
+from schemas.model_setup import rebuild_models
 
 # Configurar logging
 logging.basicConfig(
@@ -115,6 +109,8 @@ async def health_check():
         "status": "healthy",
         "database": "connected" if check_connection() else "disconnected"
     }
+
+rebuild_models()
 
 # Importar y registrar routers después de crear la app
 from controllers.product_controller import router as product_router
