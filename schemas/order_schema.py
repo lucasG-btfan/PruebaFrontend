@@ -14,7 +14,7 @@ class OrderBaseSchema(BaseModel):
     delivery_method: int = Field(1, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
     status: Optional[int] = Field(1, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
     notes: Optional[str] = Field(None, max_length=500, description="Order notes")
-    
+
     class Config:
         from_attributes = True
 
@@ -23,7 +23,7 @@ class OrderDetailCreateSchema(BaseModel):
     product_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
     price: Optional[float] = Field(None, gt=0)
-    
+
     class Config:
         from_attributes = True
 
@@ -36,19 +36,19 @@ class OrderCreateSchema(BaseModel):
     status: Optional[int] = Field(1, ge=1, le=4, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
     notes: Optional[str] = Field(None, max_length=500, description="Order notes")
     order_details: Optional[List[OrderDetailCreateSchema]] = Field(default=[], description="Order items")
-    
+
     @validator('total')
     def validate_total(cls, v):
         if v <= 0:
             raise ValueError('Total must be greater than 0')
         return round(v, 2)
-    
+
     @validator('order_details')
     def validate_order_details(cls, v):
         if v and len(v) == 0:
             raise ValueError('Order must have at least one item')
         return v
-    
+
     class Config:
         from_attributes = True
 
@@ -60,7 +60,7 @@ class OrderUpdateSchema(BaseModel):
     delivery_method: Optional[int] = Field(None, description="Delivery method")
     status: Optional[int] = Field(None, description="Order status")
     notes: Optional[str] = Field(None, max_length=500, description="Order notes")
-    
+
     class Config:
         from_attributes = True
 
@@ -71,8 +71,7 @@ class OrderSchema(OrderBaseSchema):
     date: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
-    # order_details: Optional[List['OrderDetailSchema']] = []
-    
+    order_details: Optional[List['OrderDetailSchema']] = []
+
     class Config:
         from_attributes = True

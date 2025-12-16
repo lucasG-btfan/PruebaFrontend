@@ -1,8 +1,10 @@
-"""OrderDetail schema with validation."""
-from typing import Optional
+from __future__ import annotations
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 from pydantic import Field, BaseModel
 
+if TYPE_CHECKING:
+    from .order_schema import OrderSchema
 
 class OrderDetailBaseSchema(BaseModel):
     """Base schema for OrderDetail."""
