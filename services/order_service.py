@@ -57,7 +57,7 @@ class OrderService:
                 except Exception as bill_error:
                     logger.warning(f"Could not generate bill: {bill_error}")
 
-            return self._order_to_dict(order)  # Devuelve un dict, no un OrderSchema
+            return self._order_to_dict(order)  
 
         except Exception as e:
             self.db.rollback()

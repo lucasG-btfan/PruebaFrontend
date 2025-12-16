@@ -1,15 +1,14 @@
 """Bill schema with validation."""
-from datetime import date as DateType
+from __future__ import annotations
+from datetime import date as DateType, datetime
 from typing import Optional, TYPE_CHECKING
-from pydantic import Field, validator
-from datetime import datetime
+from pydantic import Field
 
 from schemas.base_schema import BaseSchema
 from models.enums import PaymentType
 
 if TYPE_CHECKING:
-    from schemas.order_schema import OrderCreateSchema, OrderSchema
-    from schemas.order_detail_schema import OrderDetailCreateSchema
+    from schemas.order_schema import OrderSchema
     from schemas.client_schema import ClientSchema
 
 
@@ -18,11 +17,11 @@ class BillBase(BaseSchema):
     
     bill_number: str = Field(..., min_length=1, max_length=50, description="Unique bill number")
     discount: Optional[float] = Field(0.0, ge=0, description="Discount amount")
-    date: DateType = Field(default_factory=datetime.now().date, description="Bill date")
+    date: DateType = Field(default_factory=lambda: datetime.now().date(), description="Bill date")
     total: float = Field(..., ge=0, description="Total amount")
     payment_type: PaymentType = Field(..., description="Payment type")
-    client_id_key: int = Field(..., description="Client ID")  # Cambiado de client_id
-    order_id_key: int = Field(..., description="Order ID")    # Agregado
+    client_id_key: int = Field(..., description="Client ID")  
+    order_id_key: int = Field(..., description="Order ID")    
 
 
 class BillCreate(BillBase):
@@ -37,9 +36,8 @@ class BillResponse(BillBase):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Update timestamp")
     
-    # Relaciones opcionales
-    order: Optional['OrderSchema'] = None
-    client: Optional['ClientSchema'] = None
+    order: Optional[OrderSchema] = None
+    client: Optional[ClientSchema] = None
     
     class Config:
-        from_attributes = True  # Replaces orm_mode = True in Pydantic v2
+        from_attributes = True
