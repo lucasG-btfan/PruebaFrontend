@@ -1,4 +1,3 @@
-"""Bill schema with validation."""
 from __future__ import annotations
 from datetime import date as DateType, datetime
 from typing import Optional, TYPE_CHECKING

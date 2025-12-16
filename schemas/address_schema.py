@@ -1,7 +1,6 @@
-"""Address schema for request/response validation."""
+from __future__ import annotations
 from typing import Optional
 from pydantic import Field
-from __future__ import annotations
 from typing import Optional, List
 
 from schemas.base_schema import BaseSchema

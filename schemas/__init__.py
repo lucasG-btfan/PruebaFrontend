@@ -6,6 +6,7 @@ from schemas.order_schema import (
     OrderCreateSchema,
     OrderUpdateSchema,
     OrderBaseSchema,
+    OrderDetailCreateSchema as OrderDetailCreateInOrder
 )
 
 # Order detail schemas
