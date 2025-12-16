@@ -1,4 +1,3 @@
-# schemas/client_schema.py
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field

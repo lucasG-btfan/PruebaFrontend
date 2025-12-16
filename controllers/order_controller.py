@@ -1,3 +1,4 @@
+from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends, status
 from typing import Dict, Any
 from datetime import datetime
@@ -5,7 +6,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from repositories.base_repository_impl import InstanceNotFoundError
 from config.database_render import get_db
-from schemas.order_schema import OrderCreateSchema, OrderUpdateSchema, OrderSchema
+from schemas.order_schema import OrderCreateSchema, OrderSchema, OrderUpdateSchema
+from schemas.order_detail_schema import OrderDetailCreateSchema
 from models.order import OrderModel
 from services.order_service import OrderService
 from models.client import ClientModel

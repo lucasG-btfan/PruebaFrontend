@@ -1,6 +1,22 @@
-from typing import Optional, List
+from __future__ import annotations
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 from pydantic import Field, BaseModel, validator
+
+if TYPE_CHECKING:
+    from .order_detail_schema import OrderDetailSchema
+
+class OrderBaseSchema(BaseModel):
+    """Base schema for Order."""
+    client_id: int = Field(..., description="Client ID")
+    bill_id: Optional[int] = Field(None, description="Bill ID")
+    total: float = Field(..., gt=0, description="Order total")
+    delivery_method: int = Field(1, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
+    status: Optional[int] = Field(1, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
+    notes: Optional[str] = Field(None, max_length=500, description="Order notes")
+    
+    class Config:
+        from_attributes = True
 
 class OrderDetailCreateSchema(BaseModel):
     """Schema for order detail creation."""
@@ -48,19 +64,15 @@ class OrderUpdateSchema(BaseModel):
     class Config:
         from_attributes = True
 
-class OrderSchema(BaseModel):
+class OrderSchema(OrderBaseSchema):
     """Full Order schema for responses."""
     id_key: int
-    client_id: int = Field(..., description="Client ID")
-    bill_id: Optional[int] = Field(None, description="Bill ID")
-    total: float = Field(..., gt=0, description="Order total")
-    delivery_method: int = Field(1, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
-    status: Optional[int] = Field(1, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
-    notes: Optional[str] = Field(None, max_length=500, description="Order notes")
     order_number: Optional[str] = None
     date: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    
+    # order_details: Optional[List['OrderDetailSchema']] = []
     
     class Config:
         from_attributes = True

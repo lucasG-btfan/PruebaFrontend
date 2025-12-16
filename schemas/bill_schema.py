@@ -8,7 +8,8 @@ from schemas.base_schema import BaseSchema
 from models.enums import PaymentType
 
 if TYPE_CHECKING:
-    from schemas.order_schema import OrderSchema
+    from schemas.order_schema import OrderCreateSchema, OrderSchema
+    from schemas.order_detail_schema import OrderDetailCreateSchema
     from schemas.client_schema import ClientSchema
 
 
