@@ -1,7 +1,7 @@
 """Bill schema with validation."""
 from __future__ import annotations
 from datetime import date as DateType, datetime
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from pydantic import Field
 
 from schemas.base_schema import BaseSchema
@@ -39,8 +39,9 @@ class BillResponse(BillBase):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime | None = Field(default=None, description="Update timestamp")
     
-    order: OrderSchema | None = None
-    client: ClientSchema | None = None
+    # NO incluir relaciones circulares aquí
+    # order: OrderSchema | None = None
+    # client: ClientSchema | None = None
     
     class Config:
         from_attributes = True

@@ -3,8 +3,8 @@ Centralized Enums Module
 
 Contains all shared enumeration types used across models and schemas.
 """
+from __future__ import annotations
 from enum import Enum
-
 
 class DeliveryMethod(Enum):
     """Order delivery method options"""

@@ -17,6 +17,17 @@ from schemas.order_detail_schema import (
     OrderDetailBase
 )
 
+# Resolver referencias circulares
+try:
+    OrderSchema.model_rebuild()
+except Exception:
+    pass
+
+try:
+    OrderDetailSchema.model_rebuild()
+except Exception:
+    pass
+
 __all__ = [
     'OrderSchema',
     'OrderCreateSchema',
