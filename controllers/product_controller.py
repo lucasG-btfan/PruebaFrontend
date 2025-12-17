@@ -5,10 +5,7 @@ from config.database import get_db
 from schemas.product_schema import ProductCreateSchema, ProductUpdateSchema, ProductSchema
 from services.product_service import ProductService
 
-router = APIRouter(
-    tags=["Products"],
-    responses={404: {"description": "Product not found"}}
-)
+router = APIRouter(prefix="/products", tags=["Products"])
 
 @router.get("", response_model=Dict[str, Any])
 async def get_products(

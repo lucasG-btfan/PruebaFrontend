@@ -15,9 +15,8 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(prefix="/clients", tags=["Clients"])
 
-# ⚠️ IMPORTANTE: La ruta /test debe estar ANTES de las rutas con parámetros
 @router.get("/test")
 async def test_clients():
     return {
