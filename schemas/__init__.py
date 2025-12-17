@@ -1,5 +1,27 @@
 from __future__ import annotations
 
+# Product schemas
+from schemas.product_schema import (
+    ProductSchema,
+    ProductCreateSchema,
+    ProductUpdateSchema,
+    ProductBaseSchema
+)
+
+# Client schemas
+from schemas.client_schema import (
+    ClientSchema,
+    ClientCreateSchema,
+    ClientUpdateSchema,
+    ClientResponseSchema,
+    ClientListResponseSchema
+)
+
+# Address schemas (separado del client)
+from schemas.address_schema import (
+    AddressSchema
+)
+
 # Order schemas
 from schemas.order_schema import (
     OrderSchema,
@@ -14,28 +36,71 @@ from schemas.order_detail_schema import (
     OrderDetailSchema,
     OrderDetailCreateSchema,
     OrderDetailUpdateSchema,
-    OrderDetailBase
+    OrderDetailBase,
+    OrderDetailBaseSchema  # Esto debe existir en order_detail_schema.py
 )
 
-# Resolver referencias circulares
-try:
-    OrderSchema.model_rebuild()
-except Exception:
-    pass
+# Bill schemas
+from schemas.bill_schema import (
+    BillResponse,
+    BillCreate,
+    BillBase
+)
 
-try:
-    OrderDetailSchema.model_rebuild()
-except Exception:
-    pass
+# Category schemas
+from schemas.category_schema import (
+    CategorySchema,
+    CategoryCreateSchema,
+    CategoryUpdateSchema,
+    CategoryBaseSchema
+)
+
+# Review schemas
+from schemas.review_schema import (
+    ReviewSchema,
+    ReviewCreateSchema,
+    ReviewUpdateSchema,
+    ReviewBaseSchema
+)
 
 __all__ = [
+    # Product
+    'ProductSchema',
+    'ProductCreateSchema',
+    'ProductUpdateSchema',
+    'ProductBaseSchema',
+    # Client
+    'ClientSchema',
+    'ClientCreateSchema',
+    'ClientUpdateSchema',
+    'ClientResponseSchema',
+    'ClientListResponseSchema',
+    # Address
+    'AddressSchema',
+    # Order
     'OrderSchema',
     'OrderCreateSchema',
     'OrderUpdateSchema',
     'OrderBaseSchema',
     'OrderDetailInOrderSchema',
+    # Order Detail
     'OrderDetailSchema',
     'OrderDetailCreateSchema',
     'OrderDetailUpdateSchema',
     'OrderDetailBase',
+    'OrderDetailBaseSchema',
+    # Bill
+    'BillResponse',
+    'BillCreate',
+    'BillBase',
+    # Category
+    'CategorySchema',
+    'CategoryCreateSchema',
+    'CategoryUpdateSchema',
+    'CategoryBaseSchema',
+    # Review
+    'ReviewSchema',
+    'ReviewCreateSchema',
+    'ReviewUpdateSchema',
+    'ReviewBaseSchema',
 ]

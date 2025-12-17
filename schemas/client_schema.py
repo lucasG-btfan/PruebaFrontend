@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import Field, BaseModel, EmailStr
 
@@ -37,6 +37,27 @@ class ClientSchema(ClientBaseSchema):
     id_key: int
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class ClientResponseSchema(ClientSchema):
+    """Schema for returning a client in API responses."""
+
+    deleted_at: datetime | None = None
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True
+
+class ClientListResponseSchema(BaseModel):
+    """Schema for returning a list of clients in API responses."""
+
+    items: List[ClientResponseSchema]
+    total: int
+    page: int
+    size: int
+    pages: int
 
     class Config:
         from_attributes = True

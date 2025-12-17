@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from pydantic import Field, BaseModel
-from typing import Nonest
+
 
 class ReviewBaseSchema(BaseModel):
     """Base schema for Review."""
@@ -35,5 +35,7 @@ class ReviewSchema(ReviewBaseSchema):
     
     id_key: int
     created_at: datetime | None = None
+    updated_at: datetime | None = None  
+    
     class Config:
         from_attributes = True
