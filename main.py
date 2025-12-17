@@ -141,8 +141,8 @@ try:
     # Registrar routers
     app.include_router(product_router, prefix="/api/v1/products", tags=["Products"])
     app.include_router(order_detail_router, prefix="/api/v1/order_details", tags=["Order Details"])
-    app.include_router(order_router, prefix="/api/v1/orders", tags=["Orders"])
-    app.include_router(bill_router, prefix="/api/v1/bills", tags=["Bills"])
+    app.include_router(order_router, prefix="/api/v1", tags=["Orders"])
+    app.include_router(bill_router, prefix="/api/v1", tags=["Bills"])
     app.include_router(client_router, prefix="/api/v1/clients", tags=["Clients"])
     
     logger.info("✓ Routers registrados correctamente")
