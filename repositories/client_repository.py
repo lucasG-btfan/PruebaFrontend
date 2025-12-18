@@ -1,17 +1,18 @@
 # repositories/client_repository.py
-from typing import Optional, List, Tuple
+from __future__ import annotations
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
 from models.client import ClientModel
 from schemas.client_schema import ClientSchema
 from repositories.base_repository_impl import BaseRepositoryImpl
 
 class ClientRepository(BaseRepositoryImpl):
+    """Repository for Client entity."""
+
     def __init__(self, db: Session):
-        super().__init__(model=ClientModel, schema=ClientSchema, db=db)
-        self.db = db  # ← ESTA LÍNEA ES CRÍTICA
-        self.model = ClientModel  
-    
+        super().__init__(ClientModel, ClientSchema, db)
+
     def find_by_email(self, email: str):
-        # Asegúrate de usar self.db aquí
-        return self.db.query(ClientModel).filter(ClientModel.email == email).first()
+        """Find client by email."""
+        return self.session.query(self.model).filter(
+            self.model.email == email
+        ).first()
