@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any
 from sqlalchemy.orm import Session
 from models.order import OrderModel
-from models.order_detail import OrderDetailModel
-from schemas.order_schema import OrderSchema, OrderDetailSchema
 from repositories.order_repository import OrderRepository
 from repositories.order_detail_repository import OrderDetailRepository
 from repositories.client_repository import ClientRepository
 from services.bill_service import BillService
+
 
 class OrderService:
     def __init__(self, db: Session):
