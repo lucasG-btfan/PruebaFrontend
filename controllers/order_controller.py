@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter() 
 
-@router.post("/", response_model=Dict[str, Any], status_code=201)
+@router.post("/orders", response_model=Dict[str, Any], status_code=201)
 def create_order(
     order_data: OrderCreateSchema,
     db: Session = Depends(get_db)
@@ -52,7 +52,7 @@ def create_order(
         logger.error(f"Error creando orden: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-@router.get("/active", response_model=Dict[str, Any])
+@router.get("/orders/active", response_model=Dict[str, Any])
 def get_active_orders(db: Session = Depends(get_db)):
     """Obtener órdenes activas."""
     try:
@@ -66,7 +66,7 @@ def get_active_orders(db: Session = Depends(get_db)):
         logger.error(f"Error obteniendo órdenes activas: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{order_id}", response_model=OrderSchema)
+@router.get("/orders/{order_id}", response_model=OrderSchema)
 def get_order(order_id: int, db: Session = Depends(get_db)):
     """Obtener una orden específica."""
     try:
@@ -82,7 +82,7 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
         logger.error(f"Error obteniendo orden {order_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error del servidor: {str(e)}")
 
-@router.put("/{order_id}", response_model=OrderSchema)
+@router.put("/orders/{order_id}", response_model=OrderSchema)
 def update_order(
     order_id: int,
     order_data: OrderUpdateSchema,
