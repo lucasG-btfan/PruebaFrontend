@@ -8,7 +8,12 @@ class OrderRepository(BaseRepositoryImpl):
     """Repository for Order entity database operations."""
 
     def __init__(self, db: Session):
-        super().__init__(db, OrderModel, OrderSchema)
+        super().__init__(OrderModel, OrderSchema, db)
+    
+    def get_orders_by_client(self, client_id_key: int):
+        return self.db.query(OrderModel).filter(
+            OrderModel.client_id_key == client_id_key
+        ).all()
 
     def find(self, id_key: int):
         """Find order by ID."""

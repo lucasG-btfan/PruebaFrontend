@@ -1,145 +1,86 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends, status
-from typing import Dict, Any
+from typing import Dict, Any, List
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-from config.database_render import get_db
 from schemas.order_schema import OrderCreateSchema, OrderUpdateSchema, OrderSchema
 from services.order_service import OrderService
+from config.database_render import get_db
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-@router.post("/", response_model=Dict[str, Any], status_code=201)
+@router.post("/", response_model=OrderSchema, status_code=201)
 def create_order(
     order_data: OrderCreateSchema,
     db: Session = Depends(get_db)
 ):
+    """Crear una nueva orden."""
     try:
         order_service = OrderService(db)
         order_dict = order_data.model_dump()
+
+        # Validaciones básicas
+        if not order_dict.get('client_id'):
+            raise HTTPException(status_code=400, detail="client_id es requerido")
+
+        if not order_dict.get('order_details') or len(order_dict['order_details']) == 0:
+            raise HTTPException(status_code=400, detail="La orden debe tener al menos un producto")
+
         order_result = order_service.create_simple_order(order_dict)
+        return order_result
 
-        return OrderSchema(**order_result)
-
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error creating order: {e}", exc_info=True)
+        logger.error(f"Error creando orden: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/active", response_model=Dict[str, Any])
-async def get_active_orders(db: Session = Depends(get_db)):
-    """Obtener órdenes activas"""
+def get_active_orders(db: Session = Depends(get_db)):
+    """Obtener órdenes activas."""
     try:
-        result = db.execute(text("""
-            SELECT o.*, c.name as client_name
-            FROM orders o
-            LEFT JOIN clients c ON o.client_id = c.id
-            WHERE o.status = 1
-            ORDER BY o.date DESC
-        """))
-
-        active_orders = []
-        for row in result:
-            active_orders.append({
-                "id": row.id,
-                "date": row.date.isoformat() if hasattr(row.date, 'isoformat') else str(row.date),
-                "total": row.total,
-                "status": row.status,
-                "client_id": row.client_id,
-                "client_name": row.client_name or "Cliente"
-            })
-
+        order_service = OrderService(db)
+        active_orders = order_service.get_active_orders()
         return {
             "active_orders": active_orders,
             "count": len(active_orders)
         }
     except Exception as e:
-        logger.error(f"Error en active orders: {e}")
+        logger.error(f"Error obteniendo órdenes activas: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.get("/{order_id}", response_model=Dict[str, Any])
-async def get_order(order_id: int, db: Session = Depends(get_db)):
-    """Obtener una orden específica"""
+@router.get("/{order_id}", response_model=OrderSchema)
+def get_order(order_id: int, db: Session = Depends(get_db)):
+    """Obtener una orden específica."""
     try:
         logger.info(f"Buscando orden con id_key: {order_id}")
-
-        result = db.execute(text("""
-            SELECT
-                o.*,
-                c.name as client_name,
-                c.lastname as client_lastname,
-                COALESCE(
-                    json_agg(
-                        json_build_object(
-                            'product_id', od.product_id,
-                            'quantity', od.quantity,
-                            'price', od.price,
-                            'product_name', p.name
-                        )
-                    ) FILTER (WHERE od.id_key IS NOT NULL),
-                    '[]'::json
-                ) as order_details
-            FROM orders o
-            LEFT JOIN clients c ON o.client_id = c.id
-            LEFT JOIN order_details od ON o.id_key = od.order_id
-            LEFT JOIN products p ON od.product_id = p.id
-            WHERE o.id_key = :order_id
-            GROUP BY o.id_key, c.name, c.lastname
-        """), {"order_id": order_id})
-
-        row = result.first()
-        if not row:
-            logger.warning(f"Orden {order_id} no encontrada")
+        order_service = OrderService(db)
+        order = order_service.get_order_by_id(order_id)
+        if not order:
             raise HTTPException(status_code=404, detail=f"Orden con ID {order_id} no encontrada")
-
-        logger.info(f"Orden encontrada: {row.id_key}")
-
-        return {
-            "id_key": row.id_key,
-            "id": row.id_key,
-            "date": row.date.isoformat() if hasattr(row.date, 'isoformat') else str(row.date),
-            "total": float(row.total) if row.total else 0.0,
-            "delivery_method": row.delivery_method,
-            "status": row.status,
-            "client_id": row.client_id,
-            "client_name": f"{row.client_name or ''} {row.client_lastname or ''}".strip(),
-            "bill_id": row.bill_id,
-            "created_at": row.created_at.isoformat() if hasattr(row.created_at, 'isoformat') else str(row.created_at),
-            "updated_at": row.updated_at.isoformat() if hasattr(row.updated_at, 'isoformat') else str(row.updated_at),
-            "order_details": row.order_details
-        }
-
+        return order
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error obteniendo orden {order_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error del servidor: {str(e)}")
 
-
-@router.put("/{order_id}", response_model=Dict[str, Any])
-async def update_order(
+@router.put("/{order_id}", response_model=OrderSchema)
+def update_order(
     order_id: int,
     order_data: OrderUpdateSchema,
     db: Session = Depends(get_db)
 ):
     """Actualizar una orden existente."""
     try:
-        logger.info(f"Updating order ID {order_id}")
-
+        logger.info(f"Actualizando orden ID {order_id}")
         order_service = OrderService(db)
         update_dict = order_data.model_dump(exclude_none=True)
         order = order_service.update(order_id, update_dict)
-
         return order
-
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating order {order_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error updating order: {str(e)}"
-        )
+        logger.error(f"Error actualizando orden {order_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error actualizando orden: {str(e)}")
