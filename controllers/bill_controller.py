@@ -7,7 +7,7 @@ from config.database_render import get_db
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/bills", tags=["bills"])
+router = APIRouter() 
 
 @router.get("/order/{order_id}", response_model=Dict[str, Any])
 async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):

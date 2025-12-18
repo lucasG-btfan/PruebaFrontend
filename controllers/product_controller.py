@@ -1,24 +1,22 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
-from typing import Dict, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from config.database import get_db
 
-router = APIRouter(prefix="/api/v1", tags=["products"])
+router = APIRouter() 
 
 @router.get("/products", response_model=Dict[str, Any])
 async def get_products(
     skip: int = Query(0, ge=0, description="Número de productos a saltar"),
-    limit: int = Query(100, ge=1, le=100, description="Número máximo de productos a devolver"),
-    search: Optional[str] = Query(None, description="Término de búsqueda en nombre o descripción"),
+    limit: int = Query(12, ge=1, le=100, description="Número máximo de productos a devolver"),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Obtener lista de productos con paginación y opción de búsqueda.
-    Versión temporal evitando relaciones problemáticas.
+    Obtener todos los productos con paginación.
     """
     try:
-        query = """
+        query = text("""
             SELECT
                 id_key, name, description, price,
                 stock, category_id, sku, image_url,
@@ -26,93 +24,146 @@ async def get_products(
             FROM products
             WHERE stock > 0
             ORDER BY name
-            LIMIT :limit OFFSET :skip
-        """
-        if search:
-            search_term = f"%{search.lower()}%"
-            query = """
-                SELECT
-                    id_key, name, description, price,
-                    stock, category_id, sku, image_url,
-                    created_at, updated_at
-                FROM products
-                WHERE stock > 0 AND
-                (LOWER(name) LIKE :search OR LOWER(description) LIKE :search)
-                ORDER BY name
-                LIMIT :limit OFFSET :skip
-            """
-            result = db.execute(text(query), {"search": search_term, "limit": limit, "skip": skip})
-        else:
-            result = db.execute(text(query), {"limit": limit, "skip": skip})
+            OFFSET :skip LIMIT :limit
+        """)
 
-        products = []
-        for row in result:
-            product_dict = dict(row)
-            if product_dict.get('price'):
-                product_dict['price'] = float(product_dict['price'])
-            products.append(product_dict)
+        result = db.execute(query, {"skip": skip, "limit": limit})
+        products = [dict(row) for row in result]
+
+        # Obtener conteo total
+        count_query = text("SELECT COUNT(*) FROM products WHERE stock > 0")
+        total_result = db.execute(count_query)
+        total = total_result.scalar()
+
+        # Convertir Decimal a float para JSON
+        for product in products:
+            if product.get('price'):
+                product['price'] = float(product['price'])
 
         return {
             "success": True,
-            "data": products,
-            "count": len(products),
+            "products": products,
+            "total": total,
             "skip": skip,
             "limit": limit
         }
 
     except Exception as e:
-        # Log del error para debugging
         print(f"Error en get_products: {str(e)}")
-        return {
-            "success": False,
-            "data": [],
-            "error": str(e),
-            "skip": skip,
-            "limit": limit
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener productos: {str(e)}"
+        )
 
 @router.get("/products/search", response_model=Dict[str, Any])
 async def search_products(
-    q: str = Query(..., min_length=1, description="Término de búsqueda obligatorio"),
+    q: str = Query("", min_length=0, description="Término de búsqueda"),
+    skip: int = Query(0, ge=0, description="Número de productos a saltar"),
+    limit: int = Query(12, ge=1, le=100, description="Número máximo de productos a devolver"),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Buscar productos por término de búsqueda en nombre o descripción.
+    Buscar productos por nombre o descripción.
     """
     try:
-        search_term = f"%{q.lower()}%"
-        query = """
+        if not q:
+            return await get_products(skip=skip, limit=limit, db=db)
+
+        query = text("""
             SELECT
                 id_key, name, description, price,
                 stock, category_id, sku, image_url,
                 created_at, updated_at
             FROM products
-            WHERE stock > 0 AND
-            (LOWER(name) LIKE :search OR LOWER(description) LIKE :search)
+            WHERE (LOWER(name) LIKE LOWER(:search)
+                   OR LOWER(description) LIKE LOWER(:search))
+              AND stock > 0
             ORDER BY name
-            LIMIT 100
-        """
-        result = db.execute(text(query), {"search": search_term})
+            OFFSET :skip LIMIT :limit
+        """)
 
-        products = []
-        for row in result:
-            product_dict = dict(row)
-            if product_dict.get('price'):
-                product_dict['price'] = float(product_dict['price'])
-            products.append(product_dict)
+        result = db.execute(query, {
+            "search": f"%{q}%",
+            "skip": skip,
+            "limit": limit
+        })
+        products = [dict(row) for row in result]
+
+        # Obtener conteo
+        count_query = text("""
+            SELECT COUNT(*)
+            FROM products
+            WHERE (LOWER(name) LIKE LOWER(:search)
+                   OR LOWER(description) LIKE LOWER(:search))
+              AND stock > 0
+        """)
+        total_result = db.execute(count_query, {"search": f"%{q}%"})
+        total = total_result.scalar()
+
+        # Convertir Decimal a float
+        for product in products:
+            if product.get('price'):
+                product['price'] = float(product['price'])
 
         return {
             "success": True,
-            "data": products,
+            "products": products,
             "query": q,
-            "count": len(products)
+            "count": total,
+            "skip": skip,
+            "limit": limit
         }
 
     except Exception as e:
         print(f"Error en search_products: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al buscar productos: {str(e)}"
+        )
+
+@router.get("/products/{product_id}", response_model=Dict[str, Any])
+async def get_product_by_id(
+    product_id: int,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Obtener un producto por su ID.
+    """
+    try:
+        query = text("""
+            SELECT
+                id_key, name, description, price,
+                stock, category_id, sku, image_url,
+                created_at, updated_at
+            FROM products
+            WHERE id_key = :product_id
+        """)
+
+        result = db.execute(query, {"product_id": product_id})
+        product_row = result.fetchone()
+
+        if not product_row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Producto con ID {product_id} no encontrado"
+            )
+
+        product = dict(product_row)
+
+        # Convertir Decimal a float
+        if product.get('price'):
+            product['price'] = float(product['price'])
+
         return {
-            "success": False,
-            "data": [],
-            "error": str(e),
-            "query": q
+            "success": True,
+            "data": product
         }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error en get_product_by_id: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener producto: {str(e)}"
+        )

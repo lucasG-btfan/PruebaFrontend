@@ -9,7 +9,7 @@ from models.product import ProductModel
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/order_details", tags=["Order Details"])
+router = APIRouter() 
 
 @router.get("/test")
 async def test_order_details():

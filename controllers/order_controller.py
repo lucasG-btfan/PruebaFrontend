@@ -9,7 +9,7 @@ from config.database_render import get_db
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/orders", tags=["orders"])
+router = APIRouter() 
 
 @router.post("/", response_model=Dict[str, Any], status_code=201)
 def create_order(
