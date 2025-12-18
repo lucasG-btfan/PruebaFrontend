@@ -1,32 +1,42 @@
-from sqlalchemy import Column, String, Float, Date, Enum, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from models.base_model import BaseModel
 from models.enums import PaymentType
 
 class BillModel(BaseModel):
     __tablename__ = "bills"
 
-    id_key = Column(Integer, primary_key=True, index=True, autoincrement=True, nullable=False)
+    id_key = Column(Integer, primary_key=True, index=True, nullable=False)
 
     # Campos de factura
     bill_number = Column(String, unique=True, index=True, nullable=False)
-    discount = Column(Float)
-    date = Column(Date)
-    total = Column(Float)
-    payment_type = Column(Enum(PaymentType))
+    discount = Column(Float, default=0.0)
+    date = Column(DateTime)
+    total = Column(Float, nullable=False)
+    payment_type = Column(Integer, nullable=False)
+    subtotal = Column(Float, nullable=True)
+    taxes = Column(Float, default=0.0, nullable=True)
 
     # Claves foráneas
-    client_id_key = Column(Integer, ForeignKey('clients.id_key'), index=True)
-    order_id_key = Column(Integer, ForeignKey('orders.id_key'), index=True, nullable=True)
+    client_id = Column(Integer, ForeignKey('clients.id_key'), nullable=False)
+    order_id = Column(Integer, ForeignKey('orders.id_key'), unique=True, nullable=False)
 
-    # Relaciones
-    order = relationship('OrderModel', back_populates='bill', uselist=False, lazy="select")
-    client = relationship('ClientModel', back_populates='bills', lazy="select")
+    # Relación con orden
+    order = relationship(
+        "OrderModel",
+        back_populates="bill",
+        foreign_keys=[order_id],
+        uselist=False,
+        lazy="select",
+        primaryjoin="BillModel.order_id == OrderModel.id_key"
+    )
 
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # Relación con cliente
+    client = relationship(
+        "ClientModel",
+        back_populates="bills",
+        lazy="select"
+    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

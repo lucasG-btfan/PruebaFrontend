@@ -1,3 +1,4 @@
+# controllers/order_controller.py - ACTUALIZADO
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, Any, List
@@ -10,17 +11,19 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-@router.post("/", response_model=OrderSchema, status_code=201)
+@router.post("/", response_model=Dict[str, Any], status_code=201)
 def create_order(
     order_data: OrderCreateSchema,
     db: Session = Depends(get_db)
 ):
     """Crear una nueva orden."""
     try:
+        logger.info(f"Creando nueva orden para cliente: {order_data.client_id}")
+        
         order_service = OrderService(db)
         order_dict = order_data.model_dump()
 
-        # Validaciones básicas
+        # ⚠️ IMPORTANTE: OrderService espera client_id (no client_id_key)
         if not order_dict.get('client_id'):
             raise HTTPException(status_code=400, detail="client_id es requerido")
 
@@ -28,13 +31,26 @@ def create_order(
             raise HTTPException(status_code=400, detail="La orden debe tener al menos un producto")
 
         order_result = order_service.create_simple_order(order_dict)
-        return order_result
-
+        
+        # Asegurar que la respuesta sea compatible
+        if not order_result.get('success'):
+            raise HTTPException(status_code=400, detail=order_result.get('error', 'Error desconocido'))
+        
+        # Retornar respuesta compatible
+        return {
+            "success": True,
+            "message": order_result.get('message', 'Orden creada'),
+            "order_id": order_result.get('order_id'),
+            "bill_id": order_result.get('bill_id'),
+            "client_id": order_dict['client_id'],
+            "total": order_dict.get('total', 0.0)
+        }
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error creando orden: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @router.get("/active", response_model=Dict[str, Any])
 def get_active_orders(db: Session = Depends(get_db)):

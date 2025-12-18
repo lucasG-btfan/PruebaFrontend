@@ -34,12 +34,23 @@ class ClientModel(BaseModel):
         back_populates="client",
         cascade="all, delete-orphan",
         lazy="select",
-        foreign_keys="AddressModel.client_id_key"  
+        foreign_keys="AddressModel.client_id_key"
     )
 
-    # Relaciones 
-    orders = relationship("OrderModel", back_populates="client", cascade="all, delete-orphan", lazy="select")
-    bills = relationship("BillModel", back_populates="client", cascade="all, delete-orphan", lazy="select")
+    # Relaciones con OrderModel y BillModel
+    orders = relationship(
+        "OrderModel",
+        back_populates="client",
+        cascade="all, delete-orphan",
+        lazy="select"
+    )
+
+    bills = relationship(
+        "BillModel",
+        back_populates="client",
+        cascade="all, delete-orphan",
+        lazy="select"
+    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

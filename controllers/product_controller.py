@@ -1,13 +1,12 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
-from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Depends, Query, HTTPException
+from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from config.database import get_db
-from schemas.product_schema import ProductCreateSchema, ProductUpdateSchema, ProductSchema
-from services.product_service import ProductService
 
-router = APIRouter(prefix="/products", tags=["Products"])
+router = APIRouter(prefix="/api/v1", tags=["products"])
 
-@router.get("", response_model=Dict[str, Any])
+@router.get("/products", response_model=Dict[str, Any])
 async def get_products(
     skip: int = Query(0, ge=0, description="Número de productos a saltar"),
     limit: int = Query(100, ge=1, le=100, description="Número máximo de productos a devolver"),
@@ -16,173 +15,63 @@ async def get_products(
 ) -> Dict[str, Any]:
     """
     Obtener lista de productos con paginación y opción de búsqueda.
+    Versión temporal evitando relaciones problemáticas.
     """
     try:
-        product_service = ProductService(db)
-        products = product_service.get_all(skip, limit)
-        
-        filtered_products = products
+        query = """
+            SELECT
+                id_key, name, description, price,
+                stock, category_id, sku, image_url,
+                created_at, updated_at
+            FROM products
+            WHERE stock > 0
+            ORDER BY name
+            LIMIT :limit OFFSET :skip
+        """
         if search:
-            search_lower = search.lower()
-            filtered_products = [
-                product for product in products
-                if (search_lower in product.name.lower() or
-                    search_lower in (product.description or "").lower())
-            ]
-        
-        paginated_products = filtered_products[skip:skip + limit]
-        
+            search_term = f"%{search.lower()}%"
+            query = """
+                SELECT
+                    id_key, name, description, price,
+                    stock, category_id, sku, image_url,
+                    created_at, updated_at
+                FROM products
+                WHERE stock > 0 AND
+                (LOWER(name) LIKE :search OR LOWER(description) LIKE :search)
+                ORDER BY name
+                LIMIT :limit OFFSET :skip
+            """
+            result = db.execute(text(query), {"search": search_term, "limit": limit, "skip": skip})
+        else:
+            result = db.execute(text(query), {"limit": limit, "skip": skip})
+
+        products = []
+        for row in result:
+            product_dict = dict(row)
+            if product_dict.get('price'):
+                product_dict['price'] = float(product_dict['price'])
+            products.append(product_dict)
+
         return {
-            "products": paginated_products,
-            "total": len(filtered_products),
+            "success": True,
+            "data": products,
+            "count": len(products),
             "skip": skip,
             "limit": limit
         }
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener productos: {str(e)}"
-        )
 
-@router.post("", response_model=Dict[str, Any], status_code=201)
-async def create_product(
-    product_data: ProductCreateSchema,
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """
-    Crear un nuevo producto.
-    
-    - **product_data**: Datos del producto a crear.
-    """
-    try:
-        product_service = ProductService(db)
-        
-        product = product_service.save(product_data)
-        
+    except Exception as e:
+        # Log del error para debugging
+        print(f"Error en get_products: {str(e)}")
         return {
-            "message": "Product created successfully",
-            "product_id": product.id_key,
-            "product": product
+            "success": False,
+            "data": [],
+            "error": str(e),
+            "skip": skip,
+            "limit": limit
         }
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Error en los datos: {str(e)}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error interno: {str(e)}"
-        )
 
-@router.get("/{product_id}", response_model=ProductSchema)
-async def get_product(
-    product_id: int,
-    db: Session = Depends(get_db)
-) -> ProductSchema:
-    """
-    Obtener un producto específico por su ID.
-    """
-    try:
-        product_service = ProductService(db)
-        product = product_service.get_one(product_id)
-        
-        if not product:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Product with ID {product_id} not found"
-            )
-            
-        return product
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener el producto: {str(e)}"
-        )
-
-@router.put("/{product_id}", response_model=Dict[str, Any])
-async def update_product(
-    product_id: int,
-    product_data: ProductUpdateSchema,
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """
-    Actualizar un producto existente.
-    """
-    try:
-        product_service = ProductService(db)
-        existing_product = product_service.get_one(product_id)
-        if not existing_product:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Product with ID {product_id} not found"
-            )
-        
-        update_dict = product_data.dict(exclude_unset=True)
-        
-        updated_schema = ProductSchema(
-            **existing_product.dict(),
-            **update_dict
-        )
-        
-        product = product_service.update(product_id, updated_schema)
-        
-        return {
-            "message": "Product updated successfully",
-            "product": product
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al actualizar el producto: {str(e)}"
-        )
-
-@router.delete("/{product_id}")
-async def delete_product(
-    product_id: int,
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """
-    Eliminar un producto.
-    """
-    try:
-        product_service = ProductService(db)
-        
-        existing_product = product_service.get_one(product_id)
-        if not existing_product:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Product with ID {product_id} not found"
-            )
-        product_service.delete(product_id)
-        
-        return {
-            "message": f"Product with ID {product_id} deleted successfully",
-            "deleted_id": product_id
-        }
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al eliminar el producto: {str(e)}"
-        )
-
-@router.get("/search", response_model=Dict[str, Any])
+@router.get("/products/search", response_model=Dict[str, Any])
 async def search_products(
     q: str = Query(..., min_length=1, description="Término de búsqueda obligatorio"),
     db: Session = Depends(get_db)
@@ -191,25 +80,39 @@ async def search_products(
     Buscar productos por término de búsqueda en nombre o descripción.
     """
     try:
-        product_service = ProductService(db)
-        
-        all_products = product_service.get_all(skip=0, limit=1000) 
-        
-        q_lower = q.lower()
-        results = [
-            product for product in all_products
-            if (q_lower in product.name.lower() or
-                q_lower in (product.description or "").lower())
-        ]
-        
+        search_term = f"%{q.lower()}%"
+        query = """
+            SELECT
+                id_key, name, description, price,
+                stock, category_id, sku, image_url,
+                created_at, updated_at
+            FROM products
+            WHERE stock > 0 AND
+            (LOWER(name) LIKE :search OR LOWER(description) LIKE :search)
+            ORDER BY name
+            LIMIT 100
+        """
+        result = db.execute(text(query), {"search": search_term})
+
+        products = []
+        for row in result:
+            product_dict = dict(row)
+            if product_dict.get('price'):
+                product_dict['price'] = float(product_dict['price'])
+            products.append(product_dict)
+
         return {
-            "products": results,
+            "success": True,
+            "data": products,
             "query": q,
-            "count": len(results)
+            "count": len(products)
         }
-        
+
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error en la búsqueda: {str(e)}"
-        )
+        print(f"Error en search_products: {str(e)}")
+        return {
+            "success": False,
+            "data": [],
+            "error": str(e),
+            "query": q
+        }

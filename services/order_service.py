@@ -1,67 +1,90 @@
 from datetime import datetime
-from typing import Dict, Any, TYPE_CHECKING
+from typing import Dict, Any
 from sqlalchemy.orm import Session
+import logging
+import random
 
-if TYPE_CHECKING:
-    from schemas.order_schema import OrderSchema
-    from schemas.order_detail_schema import OrderDetailSchema
+logger = logging.getLogger(__name__)
 
-from repositories.order_repository import OrderRepository
-from repositories.order_detail_repository import OrderDetailRepository
-from repositories.client_repository import ClientRepository
-from services.bill_service import BillService
+from models.order import OrderModel
+from models.order_detail import OrderDetailModel
+from models.client import ClientModel
+from models.bill import BillModel
+from models.enums import PaymentType
 
 class OrderService:
     def __init__(self, db: Session):
         self.db = db
-        self.order_repo = OrderRepository(db)
-        self.order_detail_repo = OrderDetailRepository(db)
-        self.client_repo = ClientRepository(db)
-        self.bill_service = BillService(db)
     
     def create_simple_order(self, order_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Crea una orden simple con sus detalles
+        Crea una orden simple
         """
         try:
+            logger.info(f"Creando orden: {order_data}")
+            
             client_id = order_data.get('client_id')
-            client = self.client_repo.get_by_id(client_id)
+            client = self.db.query(ClientModel).filter(ClientModel.id_key == client_id).first()
             if not client:
-                return {"error": f"Cliente con ID {client_id} no encontrado", "success": False}
+                return {"success": False, "error": f"Cliente {client_id} no encontrado"}
             
             order_dict = {
-                "client_id_key": client_id,  
-                "total": order_data.get('total', 0.0),
+                "client_id": client_id,
+                "total": float(order_data.get('total', 0.0)),
                 "delivery_method": order_data.get('delivery_method', 1),
-                "status": order_data.get('status', 1),  
+                "status": order_data.get('status', 1),
                 "notes": order_data.get('notes', ''),
                 "date": datetime.utcnow()
             }
             
-            order = self.order_repo.create(order_dict)
+            if 'address' in order_data:
+                order_dict['address'] = order_data['address']
+            
+            order = OrderModel(**order_dict)
+            self.db.add(order)
+            self.db.commit()
+            self.db.refresh(order)
+            
+            logger.info(f"Orden creada ID: {order.id_key}")
             
             order_details = order_data.get('order_details', [])
             for detail in order_details:
                 detail_dict = {
-                    "order_id": order.id_key,  
+                    "order_id": order.id_key,
                     "product_id": detail.get('product_id'),
                     "quantity": detail.get('quantity', 1),
-                    "price": detail.get('price', 0.0)
+                    "price": float(detail.get('price', 0.0))
                 }
-                self.order_detail_repo.create(detail_dict)
+                detail_obj = OrderDetailModel(**detail_dict)
+                self.db.add(detail_obj)
+            
+            self.db.commit()
             
             try:
-                bill_data = {
+                bill_number = f"FACT-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+                total_amount = float(order_data.get('total', 0.0))
+                subtotal = total_amount / 1.21  #  21% IVA
+                taxes = total_amount - subtotal
+                
+                bill_dict = {
+                    "bill_number": bill_number,
                     "order_id": order.id_key,
                     "client_id": client_id,
-                    "subtotal": order.total,
-                    "taxes": order.total * 0.21, 
-                    "total": order.total * 1.21,
-                    "payment_method": 1  
+                    "total": total_amount,
+                    "subtotal": subtotal,
+                    "taxes": taxes,
+                    "payment_type": PaymentType.CASH.value,
+                    "discount": 0.0,
+                    "date": datetime.now().date()
                 }
-                bill = self.bill_service.create_bill(bill_data)
                 
-                self.order_repo.update(order.id_key, {"bill_id": bill.id_key})
+                bill = BillModel(**bill_dict)
+                self.db.add(bill)
+                self.db.commit()
+                self.db.refresh(bill)
+                
+                order.bill_id = bill.id_key
+                self.db.commit()
                 
                 return {
                     "success": True,
@@ -69,24 +92,39 @@ class OrderService:
                     "order_id": order.id_key,
                     "bill_id": bill.id_key
                 }
+                
             except Exception as bill_error:
+                logger.warning(f"Error creando factura: {bill_error}. Orden creada sin factura.")
                 return {
                     "success": True,
-                    "message": f"Orden creada pero factura falló: {str(bill_error)}",
+                    "message": "Orden creada (factura pendiente)",
                     "order_id": order.id_key,
                     "bill_id": None
                 }
                 
         except Exception as e:
-            return {"error": f"Error al crear orden: {str(e)}", "success": False}
+            self.db.rollback()
+            logger.error(f"Error creando orden: {e}", exc_info=True)
+            return {"success": False, "error": f"Error interno: {str(e)}"}
     
-    def get_all_orders(self):
-        """Obtiene todas las órdenes con sus relaciones"""
-        return self.order_repo.get_all()
+    def get_active_orders(self):
+        """Obtener órdenes activas"""
+        try:
+
+            orders = self.db.query(OrderModel).filter(OrderModel.status == 1).all()
+            return orders
+        except Exception as e:
+            logger.error(f"Error obteniendo órdenes activas: {e}")
+            return []
     
     def get_order_by_id(self, order_id: int):
-        """Obtiene una orden por ID con detalles"""
-        order = self.order_repo.get_by_id(order_id)
-        if order:
-            self.db.refresh(order)
-        return order
+        """Obtener orden por ID"""
+        try:
+            order = self.db.query(OrderModel).filter(OrderModel.id_key == order_id).first()
+            if order:
+                
+                self.db.refresh(order)
+            return order
+        except Exception as e:
+            logger.error(f"Error obteniendo orden {order_id}: {e}")
+            return None

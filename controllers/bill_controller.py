@@ -39,7 +39,8 @@ async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):
             )
 
         from models.bill import BillModel
-        bill = db.query(BillModel).filter(BillModel.order_id_key == order_id).first()
+        
+        bill = db.query(BillModel).filter(BillModel.order_id == order_id).first()
         
         details_result = db.execute(
             text("""
@@ -86,7 +87,7 @@ async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):
                 "payment_type": "pending",
                 "status": "pending",
                 "client_info": {
-                    "id": order.client_id,
+                    "id": order.client_id,  
                     "name": order.client_name or "Cliente",
                     "lastname": order.client_lastname or f"ID {order.client_id}",
                     "email": order.client_email or "",
@@ -106,7 +107,7 @@ async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):
             tax_amount_calculated = 0.0
         
         from models.client import ClientModel
-        client = db.query(ClientModel).filter(ClientModel.id_key == bill.client_id_key).first()
+        client = db.query(ClientModel).filter(ClientModel.id_key == bill.client_id).first()
 
         response = {
             "order_id": order_id,
@@ -121,7 +122,7 @@ async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):
             "payment_type": bill.payment_type.value if hasattr(bill.payment_type, 'value') else str(bill.payment_type),
             "status": "paid" if bill_total > 0 else "pending",
             "client_info": {
-                "id": bill.client_id_key,
+                "id": bill.client_id,  
                 "name": client.name if client else "",
                 "lastname": client.lastname if client else "",
                 "email": client.email if client else "",
