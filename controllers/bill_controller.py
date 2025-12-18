@@ -16,7 +16,17 @@ async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):
         logger.info(f"Buscando factura para orden {order_id}")
 
         order_result = db.execute(
-            text("SELECT * FROM orders WHERE id_key = :order_id"),
+            text("""
+                SELECT 
+                    o.*,
+                    c.name as client_name,
+                    c.lastname as client_lastname,
+                    c.email as client_email,
+                    c.phone as client_phone
+                FROM orders o
+                LEFT JOIN clients c ON o.client_id = c.id_key
+                WHERE o.id_key = :order_id
+            """),
             {"order_id": order_id}
         )
         order = order_result.first()
@@ -28,79 +38,103 @@ async def get_bill_by_order(order_id: int, db: Session = Depends(get_db)):
                 detail=f"Orden con ID {order_id} no encontrada"
             )
 
-        # Buscar la factura
-        bill_result = db.execute(
-            text("""
-                SELECT 
-                    b.*,
-                    c.name as client_name,
-                    c.lastname as client_lastname,
-                    c.email as client_email
-                FROM bills b
-                LEFT JOIN clients c ON b.client_id_key = c.id_key
-                WHERE b.order_id_key = :order_id
-            """),
-            {"order_id": order_id}
-        )
-        bill = bill_result.first()
+        from models.bill import BillModel
+        bill = db.query(BillModel).filter(BillModel.order_id_key == order_id).first()
         
-        if not bill:
-            logger.warning(f"Factura no encontrada para orden {order_id}")
-            # Si no hay factura, se generar una respuesta con datos básicos de la orden
-            return {
-                "order_id": order_id,
-                "bill_number": f"PENDIENTE-{order_id}",
-                "date": order.date.isoformat() if order.date else None,
-                "subtotal": float(order.total) if order.total else 0.0,
-                "discount": 0.0,
-                "tax": 0.0,
-                "total": float(order.total) if order.total else 0.0,
-                "payment_type": "pending",
-                "status": "pending",
-                "client_info": {
-                    "id": order.client_id,
-                    "name": "Cliente",
-                    "lastname": f"ID {order.client_id}"
-                },
-                "order_details": []
-            }
-
-        # Si hay factura se  obtiene los detalles de la orden
         details_result = db.execute(
             text("""
                 SELECT 
                     od.*,
                     p.name as product_name,
-                    p.description as product_description
+                    p.description as product_description,
+                    p.price as unit_price
                 FROM order_details od
                 LEFT JOIN products p ON od.product_id = p.id_key
                 WHERE od.order_id = :order_id
             """),
             {"order_id": order_id}
         )
-        details = [dict(row) for row in details_result]
+        details = []
+        subtotal_from_details = 0.0
+        
+        for row in details_result:
+            row_dict = dict(row)
+            quantity = float(row_dict.get('quantity', 0))
+            unit_price = float(row_dict.get('unit_price', 0))
+            line_subtotal = quantity * unit_price
+            row_dict['line_subtotal'] = line_subtotal
+            subtotal_from_details += line_subtotal
+            details.append(row_dict)
 
-        # respuesta
-        return {
+        TAX_RATE = 0.21  
+        
+        if not bill:
+            logger.warning(f"Factura no encontrada para orden {order_id}")
+            order_total = float(order.total) if order.total else subtotal_from_details
+            subtotal = order_total / (1 + TAX_RATE)  
+            tax_amount = subtotal * TAX_RATE
+            
+            return {
+                "order_id": order_id,
+                "bill_number": f"PENDIENTE-{order_id}",
+                "date": order.date.isoformat() if order.date else None,
+                "subtotal": round(subtotal, 2),
+                "discount": float(order.discount) if hasattr(order, 'discount') and order.discount else 0.0,
+                "tax_rate": TAX_RATE,
+                "tax_amount": round(tax_amount, 2),
+                "total": round(order_total, 2),
+                "payment_type": "pending",
+                "status": "pending",
+                "client_info": {
+                    "id": order.client_id,
+                    "name": order.client_name or "Cliente",
+                    "lastname": order.client_lastname or f"ID {order.client_id}",
+                    "email": order.client_email or "",
+                    "phone": order.client_phone or ""
+                },
+                "order_details": details,
+                "generated": False
+            }
+
+        bill_total = float(bill.total) if bill.total else 0.0
+        
+        if bill_total > 0:
+            subtotal_calculated = bill_total / (1 + TAX_RATE)
+            tax_amount_calculated = bill_total - subtotal_calculated
+        else:
+            subtotal_calculated = 0.0
+            tax_amount_calculated = 0.0
+        
+        from models.client import ClientModel
+        client = db.query(ClientModel).filter(ClientModel.id_key == bill.client_id_key).first()
+
+        response = {
             "order_id": order_id,
+            "bill_id": bill.id_key,
             "bill_number": bill.bill_number,
             "date": bill.date.isoformat() if bill.date else None,
-            "subtotal": float(bill.total) if bill.total else 0.0,
+            "subtotal": round(subtotal_calculated, 2),
             "discount": float(bill.discount) if bill.discount else 0.0,
-            "tax": 0.0,  # Puedes calcularlo si tienes el campo
-            "total": float(bill.total) if bill.total else 0.0,
+            "tax_rate": TAX_RATE,
+            "tax_amount": round(tax_amount_calculated, 2),
+            "total": round(bill_total, 2),
             "payment_type": bill.payment_type.value if hasattr(bill.payment_type, 'value') else str(bill.payment_type),
-            "status": "paid" if bill.total and bill.total > 0 else "pending",
+            "status": "paid" if bill_total > 0 else "pending",
             "client_info": {
                 "id": bill.client_id_key,
-                "name": bill.client_name or "",
-                "lastname": bill.client_lastname or "",
-                "email": bill.client_email or ""
+                "name": client.name if client else "",
+                "lastname": client.lastname if client else "",
+                "email": client.email if client else "",
+                "phone": client.phone if client else ""
             },
             "order_details": details,
             "created_at": bill.created_at.isoformat() if bill.created_at else None,
+            "updated_at": bill.updated_at.isoformat() if bill.updated_at else None,
             "generated": True
         }
+        
+        logger.info(f"Factura {bill.bill_number} encontrada para orden {order_id}")
+        return response
 
     except HTTPException:
         raise

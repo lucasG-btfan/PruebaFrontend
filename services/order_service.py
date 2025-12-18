@@ -1,12 +1,15 @@
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
 from sqlalchemy.orm import Session
-from models.order import OrderModel
+
+if TYPE_CHECKING:
+    from schemas.order_schema import OrderSchema
+    from schemas.order_detail_schema import OrderDetailSchema
+
 from repositories.order_repository import OrderRepository
 from repositories.order_detail_repository import OrderDetailRepository
 from repositories.client_repository import ClientRepository
 from services.bill_service import BillService
-
 
 class OrderService:
     def __init__(self, db: Session):
