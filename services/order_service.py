@@ -29,7 +29,7 @@ class OrderService:
                 return {"success": False, "error": f"Cliente {client_id} no encontrado"}
             
             order_dict = {
-                "client_id": client_id,
+                "client_id_key": client_id,
                 "total": float(order_data.get('total', 0.0)),
                 "delivery_method": order_data.get('delivery_method', 1),
                 "status": order_data.get('status', 1),

@@ -17,8 +17,8 @@ class OrderModel(BaseModel):
     address = Column(String, nullable=True)
 
     # Claves foráneas
-    client_id = Column(Integer, ForeignKey('clients.id_key'), index=True)
-    bill_id = Column(Integer, ForeignKey('bills.id_key'), nullable=True)
+    client_id_key = Column(Integer, ForeignKey("clients.id_key"))
+    bill_id = Column(Integer, ForeignKey("bills.id_key"), nullable=True)
 
     # Relación con BillModel (uno-a-uno bidireccional)
     bill = relationship(
@@ -30,20 +30,10 @@ class OrderModel(BaseModel):
         remote_side="BillModel.order_id"
     )
 
-    # Relación con cliente
-    client = relationship(
-        "ClientModel",
-        back_populates="orders",
-        lazy="select"
-    )
-
-    # Relación con detalles de orden (productos)
-    order_details = relationship(
-        "OrderDetailModel",
-        back_populates="order",
-        cascade="all, delete-orphan",
-        lazy="select"
-    )
+    # Relación 
+    client = relationship("ClientModel", back_populates="orders", foreign_keys=[client_id_key])
+    bill = relationship("BillModel", back_populates="order")
+    details = relationship("OrderDetailModel", back_populates="order")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

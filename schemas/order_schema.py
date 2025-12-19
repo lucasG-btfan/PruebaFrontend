@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class OrderBaseSchema(BaseModel):
-    client_id: int = Field(..., description="Client ID")
+    client_id: int = Field(..., description="Client ID", alias="client_id_key")
     bill_id: int | None = Field(None, description="Bill ID")
     total: float = Field(..., gt=0, description="Order total")
     delivery_method: int = Field(1, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
@@ -17,6 +17,7 @@ class OrderBaseSchema(BaseModel):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class OrderDetailInOrderSchema(BaseModel):
@@ -30,7 +31,7 @@ class OrderDetailInOrderSchema(BaseModel):
 
 
 class OrderCreateSchema(BaseModel):
-    client_id: int = Field(..., description="Client ID")
+    client_id: int = Field(..., description="Client ID", alias="client_id_key")
     bill_id: int | None = None
     total: float = Field(..., gt=0, description="Order total")
     delivery_method: int = Field(1, ge=1, le=3, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
@@ -55,6 +56,7 @@ class OrderCreateSchema(BaseModel):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class OrderUpdateSchema(BaseModel):
