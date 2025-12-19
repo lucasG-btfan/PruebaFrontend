@@ -13,7 +13,7 @@ class OrderBaseSchema(BaseModel):
     total: float = Field(..., gt=0, description="Order total")
     delivery_method: int = Field(1, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
     status: int | None = Field(1, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
-    notes: str | None = Field(None, max_length=500, description="Order notes")
+    address: str | None = Field(None, max_length=500, description="Delivery address")
 
     class Config:
         from_attributes = True
@@ -35,8 +35,7 @@ class OrderCreateSchema(BaseModel):
     total: float = Field(..., gt=0, description="Order total")
     delivery_method: int = Field(1, ge=1, le=3, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
     status: int | None = Field(1, ge=1, le=4, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
-    notes: str | None = Field(None, max_length=500, description="Order notes")
-    address: str | None = Field(None, max_length=500, description="Delivery address (required for Standard/Express delivery)")  # <-- Campo nuevo
+    address: str | None = Field(None, max_length=500, description="Delivery address")  
     order_details: List[OrderDetailInOrderSchema] | None = Field(default_factory=list, description="Order items")
 
     @validator('total')
@@ -59,13 +58,12 @@ class OrderCreateSchema(BaseModel):
 
 
 class OrderUpdateSchema(BaseModel):
-    """Schema for updating an order."""
     client_id: int | None = Field(None, description="Client ID")
     bill_id: int | None = Field(None, description="Bill ID")
     total: float | None = Field(None, gt=0, description="Order total")
     delivery_method: int | None = Field(None, description="Delivery method")
     status: int | None = Field(None, description="Order status")
-    notes: str | None = Field(None, max_length=500, description="Order notes")
+    address: str | None = Field(None, max_length=500, description="Delivery address")
     
     class Config:
         from_attributes = True
