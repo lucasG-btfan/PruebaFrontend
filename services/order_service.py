@@ -33,12 +33,10 @@ class OrderService:
                 "total": float(order_data.get('total', 0.0)),
                 "delivery_method": order_data.get('delivery_method', 1),
                 "status": order_data.get('status', 1),
-                "notes": order_data.get('notes', ''),
+                "address": order_data.get('notes', ''),
                 "date": datetime.utcnow()
             }
             
-            if 'address' in order_data:
-                order_dict['address'] = order_data['address']
             
             order = OrderModel(**order_dict)
             self.db.add(order)

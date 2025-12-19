@@ -14,7 +14,6 @@ class OrderModel(BaseModel):
     total = Column(Float, nullable=False)
     delivery_method = Column(Integer, nullable=False)
     status = Column(Integer, nullable=False)
-    notes = Column(String, nullable=True, default='')
     address = Column(String, nullable=True)
 
     # Claves foráneas
