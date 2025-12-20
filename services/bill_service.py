@@ -31,7 +31,6 @@ class BillService:
             "order_id_key": bill_data.order_id_key,
             "client_id_key": bill_data.client_id_key,
             "subtotal": subtotal,
-            "taxes": tax_amount,
             "total": total,
             "payment_type": bill_data.payment_type,
             "status": 1,  

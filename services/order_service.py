@@ -63,7 +63,6 @@ class OrderService:
                 bill_number = f"FACT-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
                 total_amount = float(order_data.get('total', 0.0))
                 subtotal = total_amount / 1.21  #  21% IVA
-                taxes = total_amount - subtotal
                 
                 bill_dict = {
                     "bill_number": bill_number,
@@ -71,7 +70,6 @@ class OrderService:
                     "client_id": client_id,
                     "total": total_amount,
                     "subtotal": subtotal,
-                    "taxes": taxes,
                     "payment_type": PaymentType.CASH.value,
                     "discount": 0.0,
                     "date": datetime.now().date()

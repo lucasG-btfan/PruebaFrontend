@@ -15,7 +15,6 @@ class BillModel(BaseModel):
     total = Column(Float, nullable=False)
     payment_type = Column(Integer, nullable=False)
     subtotal = Column(Float, nullable=True)
-    taxes = Column(Float, default=0.0, nullable=True)
 
     # Claves foráneas
     client_id = Column(Integer, ForeignKey('clients.id_key'), nullable=False)
