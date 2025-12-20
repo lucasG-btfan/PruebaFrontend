@@ -23,7 +23,6 @@ def create_order(
         order_service = OrderService(db)
         order_dict = order_data.model_dump()
 
-        # ⚠️ IMPORTANTE: OrderService espera client_id (no client_id_key)
         if not order_dict.get('client_id'):
             raise HTTPException(status_code=400, detail="client_id es requerido")
 
@@ -32,7 +31,6 @@ def create_order(
 
         order_result = order_service.create_simple_order(order_dict)
         
-        # Asegurar que la respuesta sea compatible
         if not order_result.get('success'):
             raise HTTPException(status_code=400, detail=order_result.get('error', 'Error desconocido'))
         

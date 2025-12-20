@@ -13,7 +13,7 @@ class OrderDetailModel(BaseModel):
     product_id = Column(Integer, ForeignKey("products.id_key"), index=True)
 
     # Relaciones
-    order = relationship("OrderModel", back_populates="order_details", lazy="select")
+    order = relationship("OrderModel", back_populates="details", lazy="select")
     product = relationship("ProductModel", back_populates="order_details", lazy="select")
 
     def __init__(self, **kwargs):

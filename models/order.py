@@ -26,12 +26,12 @@ class OrderModel(BaseModel):
         back_populates="order",
         uselist=False,
         lazy="select",
-        foreign_keys="BillModel.order_id"  # Especifica explícitamente la clave foránea en BillModel
+        foreign_keys="BillModel.order_id"  
     )
 
     # Relación con ClientModel
     client = relationship("ClientModel", back_populates="orders", foreign_keys=[client_id_key])
-    details = relationship("OrderDetailModel", back_populates="order")
+    details = relationship("OrderDetailModel", back_populates="order", lazy="select", cascade="all, delete-orphan")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
