@@ -80,8 +80,8 @@ class OrderService:
                 self.db.add(bill)
                 self.db.commit()
                 self.db.refresh(bill)
-                
-                order.bill_id = bill.id_key
+
+                order.bill_id = bill.id_key  # Asigna el ID de la factura al pedido
                 self.db.commit()
                 
                 return {

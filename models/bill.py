@@ -27,8 +27,7 @@ class BillModel(BaseModel):
         back_populates="bill",
         foreign_keys=[order_id],
         uselist=False,
-        lazy="select",
-        primaryjoin="BillModel.order_id == OrderModel.id_key"
+        lazy="select"
     )
 
     # Relación con cliente

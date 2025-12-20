@@ -20,19 +20,17 @@ class OrderModel(BaseModel):
     client_id_key = Column(Integer, ForeignKey("clients.id_key"))
     bill_id = Column(Integer, ForeignKey("bills.id_key"), nullable=True)
 
-    # Relación con BillModel (uno-a-uno bidireccional)
+     # Relación con BillModel (uno-a-uno)
     bill = relationship(
         "BillModel",
         back_populates="order",
-        foreign_keys="BillModel.order_id",
         uselist=False,
         lazy="select",
-        remote_side="BillModel.order_id"
+        foreign_keys="BillModel.order_id"  # Especifica explícitamente la clave foránea en BillModel
     )
 
-    # Relación 
+    # Relación con ClientModel
     client = relationship("ClientModel", back_populates="orders", foreign_keys=[client_id_key])
-    bill = relationship("BillModel", back_populates="order")
     details = relationship("OrderDetailModel", back_populates="order")
 
     def __init__(self, **kwargs):
