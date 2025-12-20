@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from models.base_model import BaseModel
+from sqlalchemy import Enum as SQLAlchemyEnum
 from models.enums import DeliveryMethod, Status
 
 class OrderModel(BaseModel):
@@ -12,8 +13,8 @@ class OrderModel(BaseModel):
     # Campos de orden
     date = Column(DateTime, index=True, default=func.now())
     total = Column(Float, nullable=False)
-    delivery_method = Column(Integer, nullable=False)
-    status = Column(Integer, nullable=False)
+    delivery_method = Column(SQLAlchemyEnum(DeliveryMethod), nullable=False)
+    status = Column(SQLAlchemyEnum(Status), nullable=False)
     address = Column(String, nullable=True)
 
     # Claves foráneas

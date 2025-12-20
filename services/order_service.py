@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Dict, Any
 from sqlalchemy.orm import Session
+from models.enums import DeliveryMethod, Status
 import logging
 import random
 
@@ -31,8 +32,8 @@ class OrderService:
             order_dict = {
                 "client_id_key": client_id,
                 "total": float(order_data.get('total', 0.0)),
-                "delivery_method": order_data.get('delivery_method', 1),
-                "status": order_data.get('status', 1),
+                "delivery_method": DeliveryMethod.DRIVE_THRU,
+                "status": Status.PENDING,
                 "address": order_data.get('notes', ''),
                 "date": datetime.utcnow()
             }
