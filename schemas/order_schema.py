@@ -36,17 +36,8 @@ class OrderCreateSchema(BaseModel):
     total: float = Field(..., gt=0, description="Order total")
     delivery_method: int = Field(1, ge=1, le=3, description="Delivery method: 1=Standard, 2=Pickup, 3=Express")
     status: int | None = Field(1, ge=1, le=4, description="Order status: 1=Pending, 2=Processing, 3=Completed, 4=Cancelled")
-    address: str | None = Field(None, max_length=500, description="Delivery address")  
+    address: str | None = Field(None, max_length=500, description="Delivery address")
     order_details: List[OrderDetailInOrderSchema] | None = Field(default_factory=list, description="Order items")
-
-    @validator('total')
-    def validate_total(cls, v):
-        if v <= 0:
-            raise ValueError('Total must be greater than 0')
-        return round(v, 2)
-
-    class Config:
-        from_attributes = True
 
     @validator('total')
     def validate_total(cls, v):
