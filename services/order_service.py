@@ -75,6 +75,9 @@ class OrderService:
                     "date": datetime.now().date()
                 }
                 
+                print(f"DEBUG: bill_dict antes de crear BillModel = {bill_dict}")
+                print(f"DEBUG: client_id value = {client_id}")
+
                 bill = BillModel(**bill_dict)
                 self.db.add(bill)
                 self.db.commit()

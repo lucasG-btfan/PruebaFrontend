@@ -40,10 +40,9 @@ class BillModel(BaseModel):
     def __init__(self, **kwargs):
 
         if 'client_id' in kwargs and 'client_id_key' not in kwargs:
+            print(f"DEBUG: Transformando client_id={kwargs['client_id']} a client_id_key")
             kwargs['client_id_key'] = kwargs.pop('client_id')
-        elif 'client_id_key' in kwargs and 'client_id' not in kwargs:
-            kwargs['client_id'] = kwargs.pop('client_id_key')
-        
+
         super().__init__(**kwargs)
 
     def __repr__(self):

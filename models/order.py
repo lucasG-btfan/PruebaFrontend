@@ -35,7 +35,22 @@ class OrderModel(BaseModel):
     details = relationship("OrderDetailModel", back_populates="order", lazy="select", cascade="all, delete-orphan")
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        name_mapping = {
+            'client_id': 'client_id_key',
+            'order_id_key': 'order_id'  # Por si acaso
+        }
+        
+        # Transformar nombres incorrectos a correctos
+        new_kwargs = {}
+        for key, value in kwargs.items():
+            if key in name_mapping:
+                new_key = name_mapping[key]
+                print(f"Transformando {key} -> {new_key}")
+                new_kwargs[new_key] = value
+            else:
+                new_kwargs[key] = value
+        
+        super().__init__(**new_kwargs)
 
     def __repr__(self):
         return f"<Order(id_key={self.id_key}, date={self.date})>"
