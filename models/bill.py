@@ -17,7 +17,7 @@ class BillModel(BaseModel):
     subtotal = Column(Float, nullable=True)
 
     # Claves foráneas
-    client_id = Column(Integer, ForeignKey('clients.id_key'), nullable=False)
+    client_id_key = Column(Integer, ForeignKey('clients.id_key'), nullable=False)
     order_id = Column(Integer, ForeignKey('orders.id_key'), unique=True, nullable=False)
 
     # Relación con orden
@@ -33,15 +33,16 @@ class BillModel(BaseModel):
     client = relationship(
         "ClientModel",
         back_populates="bills",
-        lazy="select"
+        lazy="select",
+        foreign_keys=[client_id_key]
     )
 
     def __init__(self, **kwargs):
 
-        if 'client_id_key' in kwargs and 'client_id' not in kwargs:
+        if 'client_id' in kwargs and 'client_id_key' not in kwargs:
+            kwargs['client_id_key'] = kwargs.pop('client_id')
+        elif 'client_id_key' in kwargs and 'client_id' not in kwargs:
             kwargs['client_id'] = kwargs.pop('client_id_key')
-        if 'order_id_key' in kwargs and 'order_id' not in kwargs:
-            kwargs['order_id'] = kwargs.pop('order_id_key')
         
         super().__init__(**kwargs)
 
