@@ -66,7 +66,7 @@ class OrderService:
                 
                 bill_dict = {
                     "bill_number": bill_number,
-                    "order_id_key": order.id_key,  
+                    "order_id": order.id_key,  
                     "client_id_key": client_id,
                     "total": total_amount,
                     "subtotal": subtotal,
