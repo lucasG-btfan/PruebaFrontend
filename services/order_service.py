@@ -70,7 +70,7 @@ class OrderService:
                     "client_id_key": client_id,  
                     "total": total_amount,
                     "subtotal": subtotal,
-                    "payment_type": PaymentType.CASH.value,
+                    "payment_type": PaymentType.CASH,
                     "discount": 0.0,
                     "date": datetime.now().date()
                 }
@@ -83,7 +83,7 @@ class OrderService:
                 self.db.commit()
                 self.db.refresh(bill)
 
-                order.bill_id = bill.id_key  # Asigna el ID de la factura al pedido
+                order.bill_id = bill.id_key  
                 self.db.commit()
                 
                 return {

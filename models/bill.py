@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from models.base_model import BaseModel
+from sqlalchemy import Enum as SQLAlchemyEnum
 from models.enums import PaymentType
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,7 @@ class BillModel(BaseModel):
     discount = Column(Float, default=0.0)
     date = Column(DateTime)
     total = Column(Float, nullable=False)
-    payment_type = Column(Integer, nullable=False)
+    payment_type = Column(SQLAlchemyEnum(PaymentType), nullable=False)
     subtotal = Column(Float, nullable=True)
 
     # Claves foráneas
