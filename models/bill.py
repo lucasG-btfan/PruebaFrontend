@@ -37,6 +37,12 @@ class BillModel(BaseModel):
     )
 
     def __init__(self, **kwargs):
+
+        if 'client_id_key' in kwargs and 'client_id' not in kwargs:
+            kwargs['client_id'] = kwargs.pop('client_id_key')
+        if 'order_id_key' in kwargs and 'order_id' not in kwargs:
+            kwargs['order_id'] = kwargs.pop('order_id_key')
+        
         super().__init__(**kwargs)
 
     def __repr__(self):

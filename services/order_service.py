@@ -67,7 +67,7 @@ class OrderService:
                 bill_dict = {
                     "bill_number": bill_number,
                     "order_id": order.id_key,  
-                    "client_id_key": client_id,
+                    "client_id": client_id,  
                     "total": total_amount,
                     "subtotal": subtotal,
                     "payment_type": PaymentType.CASH.value,

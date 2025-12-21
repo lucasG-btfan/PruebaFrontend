@@ -1,12 +1,208 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from datetime import datetime
 from typing import Dict, Any, List
 from config.database import get_db
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+@router.post("/products")
+async def create_product(
+    product_data: Dict[str, Any],
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Crear un nuevo producto.
+    """
+    try:
+        # Validar datos requeridos
+        required_fields = ["name", "price", "stock"]
+        for field in required_fields:
+            if field not in product_data:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Campo requerido faltante: {field}"
+                )
+        
+        # Preparar datos para la inserción
+        insert_data = {
+            "name": product_data["name"],
+            "description": product_data.get("description", ""),
+            "price": float(product_data["price"]),
+            "stock": int(product_data["stock"]),
+            "category_id": product_data.get("category_id"),
+            "sku": product_data.get("sku", ""),
+            "image_url": product_data.get("image_url", ""),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        # Ejecutar inserción usando SQL nativo
+        query = text("""
+            INSERT INTO products 
+            (name, description, price, stock, category_id, sku, image_url, created_at, updated_at)
+            VALUES 
+            (:name, :description, :price, :stock, :category_id, :sku, :image_url, :created_at, :updated_at)
+            RETURNING id_key
+        """)
+        
+        result = db.execute(query, insert_data)
+        product_id = result.scalar()
+        db.commit()
+        
+        logger.info(f"✅ Producto creado ID: {product_id}")
+        
+        return {
+            "success": True,
+            "message": "Producto creado exitosamente",
+            "product_id": product_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error creando producto: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error al crear producto: {str(e)}"
+        )
+
+
+@router.put("/products/{product_id}")
+async def update_product(
+    product_id: int,
+    product_data: Dict[str, Any],
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Actualizar un producto existente.
+    """
+    try:
+        # Verificar que el producto existe
+        check_query = text("SELECT id_key FROM products WHERE id_key = :product_id")
+        check_result = db.execute(check_query, {"product_id": product_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Producto con ID {product_id} no encontrado"
+            )
+        
+        # Construir la consulta de actualización dinámicamente
+        update_fields = []
+        update_values = {"product_id": product_id}
+        
+        # Agregar solo los campos que se proporcionan
+        if "name" in product_data:
+            update_fields.append("name = :name")
+            update_values["name"] = product_data["name"]
+        
+        if "description" in product_data:
+            update_fields.append("description = :description")
+            update_values["description"] = product_data["description"]
+        
+        if "price" in product_data:
+            update_fields.append("price = :price")
+            update_values["price"] = float(product_data["price"])
+        
+        if "stock" in product_data:
+            update_fields.append("stock = :stock")
+            update_values["stock"] = int(product_data["stock"])
+        
+        if "category_id" in product_data:
+            update_fields.append("category_id = :category_id")
+            update_values["category_id"] = product_data["category_id"]
+        
+        if "sku" in product_data:
+            update_fields.append("sku = :sku")
+            update_values["sku"] = product_data["sku"]
+        
+        if "image_url" in product_data:
+            update_fields.append("image_url = :image_url")
+            update_values["image_url"] = product_data["image_url"]
+        
+        # Siempre actualizar updated_at
+        update_fields.append("updated_at = :updated_at")
+        update_values["updated_at"] = datetime.utcnow()
+        
+        if not update_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="No se proporcionaron datos para actualizar"
+            )
+        
+        # Ejecutar actualización
+        update_query = text(f"""
+            UPDATE products 
+            SET {', '.join(update_fields)}
+            WHERE id_key = :product_id
+        """)
+        
+        db.execute(update_query, update_values)
+        db.commit()
+        
+        logger.info(f"✅ Producto actualizado ID: {product_id}")
+        
+        return {
+            "success": True,
+            "message": "Producto actualizado exitosamente",
+            "product_id": product_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error actualizando producto: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error al actualizar producto: {str(e)}"
+        )
+
+
+@router.delete("/products/{product_id}")
+async def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Eliminar un producto (borrado lógico o físico según tu lógica de negocio).
+    """
+    try:
+        # Verificar que el producto existe
+        check_query = text("SELECT id_key FROM products WHERE id_key = :product_id")
+        check_result = db.execute(check_query, {"product_id": product_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Producto con ID {product_id} no encontrado"
+            )
+        
+        delete_query = text("DELETE FROM products WHERE id_key = :product_id")
+        
+        result = db.execute(delete_query, {"product_id": product_id})
+        db.commit()
+        
+        logger.info(f"✅ Producto eliminado ID: {product_id}")
+        
+        return {
+            "success": True,
+            "message": "Producto eliminado exitosamente",
+            "product_id": product_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error eliminando producto: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error al eliminar producto: {str(e)}"
+        )
 
 @router.get("/products")
 async def get_products(
