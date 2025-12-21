@@ -2,6 +2,12 @@ from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from models.base_model import BaseModel
 from models.enums import PaymentType
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from models.order import OrderModel
+    from models.client import ClientModel
 
 class BillModel(BaseModel):
     __tablename__ = "bills"
@@ -18,13 +24,13 @@ class BillModel(BaseModel):
 
     # Claves foráneas
     client_id_key = Column(Integer, ForeignKey('clients.id_key'), nullable=False)
-    order_id = Column(Integer, ForeignKey('orders.id_key'), unique=True, nullable=False)
+    order_id_key = Column(Integer, ForeignKey('orders.id_key'), unique=True, nullable=False)
 
     # Relación con orden
     order = relationship(
         "OrderModel",
         back_populates="bill",
-        foreign_keys=[order_id],
+        foreign_keys=[order_id_key],
         uselist=False,
         lazy="select"
     )
@@ -39,8 +45,9 @@ class BillModel(BaseModel):
 
     def __init__(self, **kwargs):
 
+        if 'order_id' in kwargs and 'order_id_key' not in kwargs:
+            kwargs['order_id_key'] = kwargs.pop('order_id')
         if 'client_id' in kwargs and 'client_id_key' not in kwargs:
-            print(f"DEBUG: Transformando client_id={kwargs['client_id']} a client_id_key")
             kwargs['client_id_key'] = kwargs.pop('client_id')
 
         super().__init__(**kwargs)

@@ -4,6 +4,12 @@ from sqlalchemy.sql import func
 from models.base_model import BaseModel
 from sqlalchemy import Enum as SQLAlchemyEnum
 from models.enums import DeliveryMethod, Status
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.bill import BillModel
+    from models.client import ClientModel
+    from models.order_detail import OrderDetailModel
 
 class OrderModel(BaseModel):
     __tablename__ = "orders"
@@ -21,13 +27,14 @@ class OrderModel(BaseModel):
     client_id_key = Column(Integer, ForeignKey("clients.id_key"))
     bill_id = Column(Integer, ForeignKey("bills.id_key"), nullable=True)
 
-     # Relación con BillModel (uno-a-uno)
+    # Relación con BillModel 
     bill = relationship(
         "BillModel",
         back_populates="order",
         uselist=False,
         lazy="select",
-        foreign_keys="BillModel.order_id"  
+        foreign_keys="[BillModel.order_id_key]",
+        primaryjoin="BillModel.order_id_key == OrderModel.id_key"  
     )
 
     # Relación con ClientModel
@@ -36,8 +43,7 @@ class OrderModel(BaseModel):
 
     def __init__(self, **kwargs):
         name_mapping = {
-            'client_id': 'client_id_key',
-            'order_id_key': 'order_id'  # Por si acaso
+            'client_id': 'client_id_key'
         }
         
         # Transformar nombres incorrectos a correctos
