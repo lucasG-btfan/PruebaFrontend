@@ -10,7 +10,7 @@ class ProductModel(BaseModel):
     price = Column(Float, nullable=False, index=True)
     stock = Column(Integer, default=0, nullable=False, index=True)
     description = Column(Text)
-    category_id = Column(Integer, ForeignKey('categories.id_key'), index=True)
+    category_id = Column(Integer, ForeignKey("categories.id_key"), nullable=True)
     sku = Column(String(100))
     image_url = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
