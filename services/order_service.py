@@ -108,13 +108,39 @@ class OrderService:
             return {"success": False, "error": f"Error interno: {str(e)}"}
     
     def get_active_orders(self):
-        """Obtener órdenes activas"""
+        """Obtener órdenes activas (estados PENDING e IN_PROGRESS)."""
         try:
+            active_orders = self.db.query(OrderModel).filter(
+                OrderModel.status.in_([Status.PENDING, Status.IN_PROGRESS])
+            ).all()
 
-            orders = self.db.query(OrderModel).filter(OrderModel.status == 1).all()
-            return orders
+            # Convierte las órdenes a un formato serializable 
+            orders_list = []
+            for order in active_orders:
+                order_dict = {
+                    "id_key": order.id_key,
+                    "client_id": order.client_id_key,
+                    "total": float(order.total) if order.total else 0.0,
+                    "status": str(order.status),  
+                    "delivery_method": str(order.delivery_method),  
+                    "address": order.address,
+                    "date": order.date.isoformat() if order.date else None,
+                    "order_details": []
+                }
+                # Agrega los detalles de la orden si existen
+                if hasattr(order, 'details') and order.details:
+                    for detail in order.details:
+                        order_dict["order_details"].append({
+                            "product_id": detail.product_id,
+                            "quantity": detail.quantity,
+                            "price": float(detail.price) if detail.price else 0.0
+                        })
+                orders_list.append(order_dict)
+
+            return orders_list
+
         except Exception as e:
-            logger.error(f"Error obteniendo órdenes activas: {e}")
+            logger.error(f"Error obteniendo órdenes activas: {e}", exc_info=True)
             return []
     
     def get_order_by_id(self, order_id: int):
