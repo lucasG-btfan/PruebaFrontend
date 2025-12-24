@@ -49,35 +49,6 @@ def create_order(
         logger.error(f"Error creando orden: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-@router.get("/orders/active", response_model=Dict[str, Any])
-def get_active_orders(db: Session = Depends(get_db)):
-    """Obtener órdenes activas."""
-    try:
-        order_service = OrderService(db)
-        active_orders = order_service.get_active_orders()
-        return {
-            "active_orders": active_orders,
-            "count": len(active_orders)
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo órdenes activas: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/orders/{order_id}", response_model=OrderSchema)
-def get_order(order_id: int, db: Session = Depends(get_db)):
-    """Obtener una orden específica."""
-    try:
-        logger.info(f"Buscando orden con id_key: {order_id}")
-        order_service = OrderService(db)
-        order = order_service.get_order_by_id(order_id)
-        if not order:
-            raise HTTPException(status_code=404, detail=f"Orden con ID {order_id} no encontrada")
-        return order
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error obteniendo orden {order_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error del servidor: {str(e)}")
 
 @router.put("/orders/{order_id}", response_model=OrderSchema)
 def update_order(
@@ -97,3 +68,34 @@ def update_order(
     except Exception as e:
         logger.error(f"Error actualizando orden {order_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error actualizando orden: {str(e)}")
+
+
+@router.get("/orders/active", response_model=Dict[str, Any])
+def get_active_orders(db: Session = Depends(get_db)):
+    """Obtener órdenes activas."""
+    try:
+        order_service = OrderService(db)
+        active_orders = order_service.get_active_orders()
+        return {
+            "active_orders": active_orders,
+            "count": len(active_orders)
+        }
+    except Exception as e:
+        logger.error(f"Error obteniendo órdenes activas: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/orders/{order_id}", response_model=OrderSchema)
+def get_order(order_id: int, db: Session = Depends(get_db)):
+    """Obtener una orden específica."""
+    try:
+        logger.info(f"Buscando orden con id_key: {order_id}")
+        order_service = OrderService(db)
+        order = order_service.get_order_by_id(order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail=f"Orden con ID {order_id} no encontrada")
+        return order
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error obteniendo orden {order_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error del servidor: {str(e)}")

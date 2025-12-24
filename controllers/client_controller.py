@@ -77,48 +77,6 @@ async def search_clients(
             detail=f"Error searching clients: {str(e)}"
         )
 
-# GET todos los clientes con paginación
-@router.get("", response_model=ClientListResponseSchema)
-@router.get("/", response_model=ClientListResponseSchema)
-async def get_clients(
-    skip: int = Query(0, ge=0, description="Número de registros a saltar"),
-    limit: int = Query(10, ge=1, le=100, description="Máximo número de registros"),
-    db: Session = Depends(get_db)
-):
-    """Obtener lista de clientes con paginación."""
-    try:
-        logger.info(f"Fetching clients: skip={skip}, limit={limit}")
-        
-        # Obtener clientes activos
-        clients = db.query(ClientModel).filter(
-            ClientModel.is_active == True
-        ).offset(skip).limit(limit).all()
-        
-        # Contar total de clientes activos
-        total = db.query(ClientModel).filter(
-            ClientModel.is_active == True
-        ).count()
-        
-        # Calcular páginas
-        pages = (total + limit - 1) // limit if limit > 0 else 1
-        current_page = (skip // limit) + 1 if limit > 0 else 1
-        
-        logger.info(f"Found {len(clients)} clients, total: {total}, pages: {pages}")
-        
-        return {
-            "items": clients,
-            "total": total,
-            "page": current_page,
-            "size": limit,
-            "pages": pages
-        }
-    except Exception as e:
-        logger.error(f"Error fetching clients: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching clients: {str(e)}"
-        )
-
 # POST crear cliente
 @router.post("", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -166,22 +124,6 @@ async def create_client(client_data: ClientCreateSchema, db: Session = Depends(g
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating client: {str(e)}"
         )
-
-# GET cliente por ID
-@router.get("/{client_id}", response_model=ClientResponseSchema)
-async def get_client(client_id: int, db: Session = Depends(get_db)):
-    """Get a specific client by id_key."""
-    client = db.query(ClientModel).filter(
-        ClientModel.id_key == client_id,
-        ClientModel.is_active == True
-    ).first()
-    
-    if not client:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Client with ID {client_id} not found"
-        )
-    return client
 
 @router.put("/{client_id}", response_model=ClientResponseSchema)
 async def update_client(
@@ -250,3 +192,61 @@ async def delete_client(client_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting client: {str(e)}"
         )
+
+# GET todos los clientes con paginación
+@router.get("", response_model=ClientListResponseSchema)
+@router.get("/", response_model=ClientListResponseSchema)
+async def get_clients(
+    skip: int = Query(0, ge=0, description="Número de registros a saltar"),
+    limit: int = Query(10, ge=1, le=100, description="Máximo número de registros"),
+    db: Session = Depends(get_db)
+):
+    """Obtener lista de clientes con paginación."""
+    try:
+        logger.info(f"Fetching clients: skip={skip}, limit={limit}")
+        
+        # Obtener clientes activos
+        clients = db.query(ClientModel).filter(
+            ClientModel.is_active == True
+        ).offset(skip).limit(limit).all()
+        
+        # Contar total de clientes activos
+        total = db.query(ClientModel).filter(
+            ClientModel.is_active == True
+        ).count()
+        
+        # Calcular páginas
+        pages = (total + limit - 1) // limit if limit > 0 else 1
+        current_page = (skip // limit) + 1 if limit > 0 else 1
+        
+        logger.info(f"Found {len(clients)} clients, total: {total}, pages: {pages}")
+        
+        return {
+            "items": clients,
+            "total": total,
+            "page": current_page,
+            "size": limit,
+            "pages": pages
+        }
+    except Exception as e:
+        logger.error(f"Error fetching clients: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching clients: {str(e)}"
+        )
+
+# GET cliente por ID
+@router.get("/{client_id}", response_model=ClientResponseSchema)
+async def get_client(client_id: int, db: Session = Depends(get_db)):
+    """Get a specific client by id_key."""
+    client = db.query(ClientModel).filter(
+        ClientModel.id_key == client_id,
+        ClientModel.is_active == True
+    ).first()
+    
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Client with ID {client_id} not found"
+        )
+    return client
