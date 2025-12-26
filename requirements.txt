@@ -9,3 +9,4 @@ passlib[bcrypt]
 python-dotenv
 alembic
 redis
+email-validator>=2.0  
