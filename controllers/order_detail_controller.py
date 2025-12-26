@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from config.database_render import get_db
+from config.database import get_db
 from schemas.order_detail_schema import OrderDetailSchema, OrderDetailCreateSchema, OrderDetailUpdateSchema
 from models.order_detail import OrderDetailModel
 from models.order import OrderModel

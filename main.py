@@ -2,6 +2,8 @@ import os
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+import sys
+from datetime import datetime
 
 logging.basicConfig(
     level=logging.INFO,  
@@ -65,6 +67,30 @@ def get_cors_origins():
     logger.info(f"CORS origins configured: {len(origins)} origins")
     return origins
 
+@app.get("/debug-test")
+async def debug_test():
+    return {
+        "message": "FastAPI debug endpoint",
+        "status": "working",
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/debug-db")
+async def debug_db():
+    try:
+        from config.database import check_connection
+        db_ok = check_connection()
+        return {
+            "message": "Database test",
+            "database_connected": db_ok,
+            "config_module": "config.database"
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "type": type(e).__name__,
+            "config_module": "ERROR"
+        }
 
 # Configurar CORS
 app.add_middleware(
@@ -155,8 +181,8 @@ logger.info("=" * 60)
 logger.info("✓ APLICACIÓN INICIADA CORRECTAMENTE")
 logger.info("=" * 60)
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 10000))
-    logger.info(f"🚀 Starting server on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+# if __name__ == "__main__":
+#     import uvicorn
+#     port = int(os.getenv("PORT", 10000))
+#     logger.info(f"🚀 Starting server on port {port}")
+#     uvicorn.run(app, host="0.0.0.0", port=port)

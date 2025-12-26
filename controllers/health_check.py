@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 import time
 from datetime import datetime
-from config.database_render import check_connection
+from config.database import check_connection
 
 router = APIRouter()
 # En controllers/health_check.py, modifica el endpoint raíz

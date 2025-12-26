@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from config.database_render import get_db
+from config.database import get_db
 import logging
 
 logger = logging.getLogger(__name__)

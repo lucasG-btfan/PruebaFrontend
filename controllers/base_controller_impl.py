@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 from controllers.base_controller import BaseController
 from schemas.base_schema import BaseSchema
-from config.database_render import get_db
+from config.database import get_db
 
 class BaseControllerImpl(BaseController):
     """

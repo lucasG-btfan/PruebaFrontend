@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from schemas.order_schema import OrderCreateSchema, OrderUpdateSchema, OrderSchema
 from services.order_service import OrderService
-from config.database_render import get_db
+from config.database import get_db
 import logging
 
 logger = logging.getLogger(__name__)

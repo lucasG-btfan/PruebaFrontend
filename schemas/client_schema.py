@@ -5,12 +5,14 @@ from pydantic import Field, BaseModel, EmailStr
 
 class ClientBaseSchema(BaseModel):
     """Base schema for Client."""
-
-    name: str = Field(..., min_length=1, max_length=200)
-    lastname: str | None = Field(None, max_length=200)
-    email: str | None = Field(None, max_length=255)
-    phone: str | None = Field(None, max_length=50)
-    address: str | None = Field(None, max_length=500)
+    name: str = Field(..., min_length=1, max_length=100)
+    lastname: str = Field(..., min_length=1, max_length=100)
+    email: EmailStr = Field(..., max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+    company: Optional[str] = Field(None, max_length=100)
+    tax_id: Optional[str] = Field(None, max_length=50)
+    notes: Optional[str] = Field(None)
+    # ❌ REMOVE: address: str | None = Field(None, max_length=500)
 
     class Config:
         from_attributes = True
@@ -21,39 +23,33 @@ class ClientCreateSchema(ClientBaseSchema):
 
 class ClientUpdateSchema(BaseModel):
     """Schema for updating Client."""
-
-    name: str | None = Field(None, min_length=1, max_length=200)
-    lastname: str | None = Field(None, max_length=200)
-    email: str | None = Field(None, max_length=255)
-    phone: str | None = Field(None, max_length=50)
-    address: str | None = Field(None, max_length=500)
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    lastname: Optional[str] = Field(None, min_length=1, max_length=100)
+    email: Optional[EmailStr] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+    company: Optional[str] = Field(None, max_length=100)
+    tax_id: Optional[str] = Field(None, max_length=50)
+    notes: Optional[str] = Field(None)
 
     class Config:
         from_attributes = True
 
 class ClientSchema(ClientBaseSchema):
-    """Full Client schema WITHOUT circular references."""
-
+    """Full Client schema."""
     id_key: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
-
-class ClientResponseSchema(ClientSchema):
-    """Schema for returning a client in API responses."""
-
-    deleted_at: datetime | None = None
     is_active: bool = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+ClientResponseSchema = ClientSchema
 
 class ClientListResponseSchema(BaseModel):
-    """Schema for returning a list of clients in API responses."""
-
-    items: List[ClientResponseSchema]
+    """Schema for returning a list of clients."""
+    items: List[ClientSchema]
     total: int
     page: int
     size: int
