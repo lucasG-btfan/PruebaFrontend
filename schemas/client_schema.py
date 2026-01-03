@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional, List
 from datetime import datetime
-from pydantic import Field, BaseModel, EmailStr
+from pydantic import Field, BaseModel, EmailStr, SecretStr
 
 class ClientBaseSchema(BaseModel):
     """Base schema for Client."""
@@ -57,3 +57,18 @@ class ClientListResponseSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ClientLoginSchema(BaseModel):
+    """Schema for client login."""
+    email: EmailStr
+    password: SecretStr
+
+class ClientRegisterSchema(ClientCreateSchema):
+    """Schema for client registration."""
+    password: SecretStr
+    confirm_password: SecretStr
+
+class ClientWithPasswordSchema(ClientSchema):
+    """Client schema with password (for internal use only)."""
+    password_hash: Optional[str] = None
+    password_salt: Optional[str] = None

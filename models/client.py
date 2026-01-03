@@ -22,6 +22,8 @@ class ClientModel(BaseModel):
     tax_id = Column(String(50))
     notes = Column(Text)
     is_active = Column(Boolean, default=True)
+    password_hash = Column(String(255), nullable=True)
+    password_salt = Column(String(255), nullable=True)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
