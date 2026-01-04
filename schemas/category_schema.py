@@ -33,7 +33,6 @@ class CategorySchema(CategoryBaseSchema):
     id_key: int
     created_at: datetime | None = None
     updated_at:datetime | None = None
-    # REMOVER relación circular temporalmente
     # products: Optional[List[Dict]] = []
     
     class Config:

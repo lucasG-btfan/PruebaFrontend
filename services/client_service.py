@@ -1,4 +1,3 @@
-# services/client_service.py
 from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
