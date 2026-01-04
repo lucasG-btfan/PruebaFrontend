@@ -168,7 +168,7 @@ try:
     # Registrar routers
     app.include_router(product_router, prefix="/api/v1", tags=["Products"])
     app.include_router(order_router, prefix="/api/v1", tags=["Orders"])
-    app.include_router(client_router, prefix="/api/v1/clients", tags=["Clients"])
+    app.include_router(client_router, prefix="/api/v1", tags=["Clients"])
     app.include_router(bill_router, prefix="/api/v1", tags=["Bills"])
     app.include_router(order_detail_router, prefix="/api/v1", tags=["Order Details"])
     app.include_router(auth_router, prefix="/api/v1")
