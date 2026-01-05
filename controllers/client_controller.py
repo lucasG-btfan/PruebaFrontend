@@ -1,5 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from config.database import get_db
@@ -13,15 +14,43 @@ from models.client import ClientModel
 from models.address import AddressModel
 import logging
 import math
+from jose import JWTError, jwt
+import os
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-def get_current_user_id_key(authorization: str = Header(...)):
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+ALGORITHM = "HS256"
+security = HTTPBearer()
+
+def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        return int(authorization.split(" ")[-1])
-    except:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        client_id: int = payload.get("sub")
+
+        if client_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+        return int(client_id)
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
+    except Exception:
+        # Fallback 
+        try:
+            if token.startswith("Bearer "):
+                parts = token.split()
+                if len(parts) == 2:
+                    return int(parts[1])
+        except:
+            pass
         return None
 
 @router.get("/test")
@@ -206,7 +235,7 @@ async def update_client(
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
     """Update an existing client."""
-    # Si no es admin, solo puede actualizar su propio perfil
+
     if current_user_id_key != 0 and client_id != current_user_id_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

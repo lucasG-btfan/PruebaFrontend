@@ -120,3 +120,14 @@ async def register(register_data: ClientRegisterSchema, db: Session = Depends(ge
         "client_id": client.id_key,
         "email": client.email
     }
+
+@router.get("/verify")
+async def verify_token(
+    current_user_id_key: int = Depends(get_current_user_id_key)
+):
+    """Verificar que el token es válido."""
+    return {
+        "valid": True,
+        "client_id": current_user_id_key,
+        "message": "Token válido"
+    }
