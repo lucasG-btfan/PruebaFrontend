@@ -162,6 +162,7 @@ try:
     from controllers.bill_controller import router as bill_router
     from controllers.client_controller import router as client_router
     from controllers.auth_controller import router as auth_router
+    from controllers.address_controller import router as address_router
     
     logger.info("✓ Routers importados correctamente")
     
@@ -172,7 +173,8 @@ try:
     app.include_router(bill_router, prefix="/api/v1", tags=["Bills"])
     app.include_router(order_detail_router, prefix="/api/v1", tags=["Order Details"])
     app.include_router(auth_router, prefix="/api/v1")
-    
+    app.include_router(address_router, prefix="/api/v1", tags=["Addresses"])
+
     logger.info("✓ Routers registrados correctamente")
     
 except Exception as e:

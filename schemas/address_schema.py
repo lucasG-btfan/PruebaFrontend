@@ -1,15 +1,35 @@
-from __future__ import annotations
+from pydantic import BaseModel, Field
 from typing import Optional
-from pydantic import Field
-from typing import Optional, List
+from datetime import datetime
 
-from schemas.base_schema import BaseSchema
+class AddressBaseSchema(BaseModel):
+    address_type: str = Field(default='shipping', max_length=50)
+    street: str = Field(..., max_length=255)
+    city: str = Field(..., max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    postal_code: Optional[str] = Field(None, max_length=20)
+    country: str = Field(default='Argentina', max_length=100)
+    is_default: bool = Field(default=False)
 
+class AddressCreateSchema(AddressBaseSchema):
+    client_id_key: int
 
-class AddressSchema(BaseSchema):
-    """Schema for Address entity with validations."""
+class AddressUpdateSchema(BaseModel):
+    address_type: Optional[str] = Field(None, max_length=50)
+    street: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    postal_code: Optional[str] = Field(None, max_length=20)
+    country: Optional[str] = Field(None, max_length=100)
+    is_default: Optional[bool] = None
+    is_active: Optional[bool] = None
 
-    street: str | None = Field(None, min_length=1, max_length=200, description="Street name")
-    number: str | None = Field(None, max_length=20, description="Street number")
-    city: str | None = Field(None, min_length=1, max_length=100, description="City name")
-    client_id: int = Field(..., description="Client ID reference (required)")
+class AddressSchema(AddressBaseSchema):
+    id_key: int
+    client_id_key: int
+    is_active: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
