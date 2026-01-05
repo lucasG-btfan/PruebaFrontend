@@ -1,3 +1,4 @@
+from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -10,99 +11,162 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/addresses", tags=["Addresses"])
 
+
 @router.get("/client/{client_id}", response_model=List[AddressSchema])
 async def get_client_addresses(client_id: int, db: Session = Depends(get_db)):
     """Obtener direcciones de un cliente"""
     addresses = db.query(AddressModel).filter(
-        AddressModel.client_id_key == client_id,
-        AddressModel.is_active == True
+        AddressModel.client_id_key == client_id
     ).all()
     return addresses
 
+
+@router.get("/store", response_model=AddressSchema)
+async def get_store_address(db: Session = Depends(get_db)):
+    """Obtener dirección del local (client_id_key = 0)"""
+    address = db.query(AddressModel).filter(
+        AddressModel.client_id_key == 0
+    ).first()
+    
+    if not address:
+        raise HTTPException(
+            status_code=404, 
+            detail="Dirección del local no encontrada"
+        )
+    
+    return address
+
+
 @router.post("/", response_model=AddressSchema, status_code=status.HTTP_201_CREATED)
-async def create_address(address_data: AddressCreateSchema, db: Session = Depends(get_db)):
-    """Crear una nueva dirección"""
-    # Verificar que el cliente exista
+async def create_address(
+    address_data: AddressCreateSchema, 
+    db: Session = Depends(get_db)
+):
+    """Crear una nueva dirección para un cliente"""
+    if address_data.client_id_key == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="client_id_key=0 está reservado para la dirección del local"
+        )
+    
     client = db.query(ClientModel).filter(
-        ClientModel.id_key == address_data.client_id_key,
-        ClientModel.is_active == True
+        ClientModel.id_key == address_data.client_id_key
     ).first()
     
     if not client:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    
-    # Si es la primera dirección, marcar como default
-    existing_addresses = db.query(AddressModel).filter(
-        AddressModel.client_id_key == address_data.client_id_key
-    ).count()
-    
-    if existing_addresses == 0:
-        address_data.is_default = True
-    
-    # Si se marca como default, quitar default de otras direcciones
-    if address_data.is_default:
-        db.query(AddressModel).filter(
-            AddressModel.client_id_key == address_data.client_id_key,
-            AddressModel.is_default == True
-        ).update({"is_default": False})
+        raise HTTPException(
+            status_code=404, 
+            detail="Cliente no encontrado"
+        )
     
     address = AddressModel(**address_data.dict())
     db.add(address)
     db.commit()
     db.refresh(address)
+    
+    logger.info(f"Dirección creada: ID {address.id_key} para cliente {address.client_id_key}")
     return address
 
+
 @router.put("/{address_id}", response_model=AddressSchema)
-async def update_address(address_id: int, address_data: AddressUpdateSchema, db: Session = Depends(get_db)):
-    """Actualizar una dirección"""
+async def update_address(
+    address_id: int, 
+    address_data: AddressUpdateSchema, 
+    db: Session = Depends(get_db)
+):
+    """Actualizar una dirección de cliente"""
     address = db.query(AddressModel).filter(
-        AddressModel.id_key == address_id,
-        AddressModel.is_active == True
+        AddressModel.id_key == address_id
     ).first()
     
     if not address:
-        raise HTTPException(status_code=404, detail="Dirección no encontrada")
+        raise HTTPException(
+            status_code=404, 
+            detail="Dirección no encontrada"
+        )
+    
+    if address.client_id_key == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La dirección del local solo puede modificarse desde /addresses/store"
+        )
     
     update_data = address_data.dict(exclude_unset=True)
-    
-    # Si se marca como default, quitar default de otras direcciones
-    if update_data.get('is_default') == True:
-        db.query(AddressModel).filter(
-            AddressModel.client_id_key == address.client_id_key,
-            AddressModel.id_key != address_id,
-            AddressModel.is_default == True
-        ).update({"is_default": False})
-    
     for key, value in update_data.items():
         setattr(address, key, value)
     
     db.commit()
     db.refresh(address)
+    
+    logger.info(f"Dirección actualizada: ID {address.id_key}")
     return address
 
-@router.delete("/{address_id}", response_model=dict)
-async def delete_address(address_id: int, db: Session = Depends(get_db)):
-    """Eliminar una dirección (soft delete)"""
+
+@router.put("/store", response_model=AddressSchema)
+async def update_store_address(
+    address_data: AddressUpdateSchema, 
+    db: Session = Depends(get_db)
+):
+    """Actualizar dirección del local"""
     address = db.query(AddressModel).filter(
-        AddressModel.id_key == address_id,
-        AddressModel.is_active == True
+        AddressModel.client_id_key == 0
     ).first()
     
     if not address:
-        raise HTTPException(status_code=404, detail="Dirección no encontrada")
+        address_data_dict = address_data.dict(exclude_unset=True)
+        address_data_dict.update({
+            "client_id_key": 0,
+            "street": address_data_dict.get("street", "Av. Principal #123"),
+            "city": address_data_dict.get("city", "Buenos Aires"),
+            "state": address_data_dict.get("state", "CABA"),
+            "zip_code": address_data_dict.get("zip_code", "C1001")
+        })
+        address = AddressModel(**address_data_dict)
+        db.add(address)
+    else:
+        update_data = address_data.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(address, key, value)
     
-    # Si es la dirección default, asignar otra como default
-    if address.is_default:
-        another_address = db.query(AddressModel).filter(
-            AddressModel.client_id_key == address.client_id_key,
-            AddressModel.id_key != address_id,
-            AddressModel.is_active == True
-        ).first()
-        
-        if another_address:
-            another_address.is_default = True
+    db.commit()
+    db.refresh(address)
     
-    address.is_active = False
+    logger.info(f"Dirección del local actualizada")
+    return address
+
+
+@router.delete("/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_address(
+    address_id: int, 
+    db: Session = Depends(get_db)
+):
+    """Eliminar una dirección (hard delete)"""
+    address = db.query(AddressModel).filter(
+        AddressModel.id_key == address_id
+    ).first()
+    
+    if not address:
+        raise HTTPException(
+            status_code=404, 
+            detail="Dirección no encontrada"
+        )
+    
+    # No permitir eliminar la dirección del local
+    if address.client_id_key == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No se puede eliminar la dirección del local"
+        )
+    
+    client_exists = db.query(ClientModel).filter(
+        ClientModel.id_key == address.client_id_key
+    ).first()
+    
+    if not client_exists:
+        logger.warning(f"Cliente {address.client_id_key} no existe, eliminando dirección huérfana")
+    
+    # Eliminar la dirección
+    db.delete(address)
     db.commit()
     
-    return {"message": "Dirección eliminada exitosamente"}
+    logger.info(f"Dirección eliminada: ID {address_id}")

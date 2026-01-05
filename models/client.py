@@ -1,7 +1,9 @@
+from __future__ import annotations
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from models.base_model import BaseModel
+
 
 class ClientModel(BaseModel):
     __tablename__ = 'clients'
@@ -53,9 +55,6 @@ class ClientModel(BaseModel):
         cascade="all, delete-orphan",
         lazy="select"
     )
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"<Client(id_key={self.id_key}, email='{self.email}')>"
