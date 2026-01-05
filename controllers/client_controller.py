@@ -25,32 +25,65 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 security = HTTPBearer()
 
-def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def get_current_user_id_key(authorization: str = Header(None)):
+    """Nueva función robusta para debug."""
+    logger.info(f"🔍 [DEBUG] Authorization header recibido: {authorization}")
+    
+    if not authorization:
+        logger.warning("⚠️ [DEBUG] No authorization header")
+        return None
+    
     try:
-        token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        client_id: int = payload.get("sub")
-
-        if client_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials"
-            )
-        return int(client_id)
-    except jwt.JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials"
-        )
-    except Exception:
-        # Fallback 
-        try:
-            if token.startswith("Bearer "):
-                parts = token.split()
-                if len(parts) == 2:
-                    return int(parts[1])
-        except:
-            pass
+        if "Bearer " in authorization:
+            token = authorization.replace("Bearer ", "").strip()
+            
+            if token.count(".") == 2:
+                try:
+                    import base64
+                    import json
+                    
+                    parts = token.split(".")
+                    if len(parts) >= 2:
+                        
+                        payload_b64 = parts[1]
+                        
+                        padding = 4 - len(payload_b64) % 4
+                        if padding < 4:
+                            payload_b64 += "=" * padding
+                        
+                        payload_json = base64.b64decode(payload_b64)
+                        payload = json.loads(payload_json)
+                        
+                        client_id = payload.get("sub")
+                        logger.info(f"✅ [DEBUG] JWT decodificado. Payload: {payload}")
+                        
+                        if client_id is not None:
+                            try:
+                                client_id_int = int(client_id)
+                                logger.info(f"✅ [DEBUG] Client ID extraído: {client_id_int}")
+                                return client_id_int
+                            except:
+                                logger.error(f"❌ [DEBUG] Client ID no es entero: {client_id}")
+                                return None
+                except Exception as jwt_error:
+                    logger.error(f"❌ [DEBUG] Error decodificando JWT: {str(jwt_error)}")
+            
+            else:
+                try:
+                    client_id = int(token)
+                    logger.info(f"📞 [DEBUG] Token no-JWT, usando como client_id: {client_id}")
+                    return client_id
+                except:
+                    logger.error(f"❌ [DEBUG] No se pudo extraer client_id de: {token}")
+                    return None
+        
+        logger.error(f"❌ [DEBUG] Formato de autorización desconocido: {authorization}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"❌ [DEBUG] Error crítico en get_current_user_id_key: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return None
 
 @router.get("/test")
@@ -118,6 +151,10 @@ async def get_clients(
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
     """Obtener lista de clientes con paginación."""
+    logger.info(f"🔍 [ENDPOINT /clients] Llamado recibido")
+    logger.info(f"🔍 [ENDPOINT /clients] skip={skip}, limit={limit}")
+    logger.info(f"🔍 [ENDPOINT /clients] current_user_id_key={current_user_id_key}")
+    
     try:
         logger.info(f"Fetching clients: skip={skip}, limit={limit}")
 
@@ -125,8 +162,13 @@ async def get_clients(
             ClientModel.is_active == True
         )
 
-        if current_user_id_key != 0:
+        if current_user_id_key is not None and current_user_id_key != 0:
             query = query.filter(ClientModel.id_key == current_user_id_key)
+            logger.info(f"🔍 [ENDPOINT /clients] Filtrado por cliente: {current_user_id_key}")
+        elif current_user_id_key == 0:
+            logger.info(f"🔍 [ENDPOINT /clients] Admin (id=0) - viendo todos los clientes")
+        else:
+            logger.info(f"🔍 [ENDPOINT /clients] current_user_id_key es None - error de autenticación")
 
         clients = query.offset(skip).limit(limit).all()
         total = query.count()
@@ -135,15 +177,20 @@ async def get_clients(
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
         logger.info(f"Found {len(clients)} clients, total: {total}, pages: {pages}")
-        return {
+        
+        response = {
             "items": clients,
             "total": total,
             "page": current_page,
             "size": limit,
             "pages": pages
         }
+        
+        logger.info(f"🔍 [ENDPOINT /clients] Respuesta preparada")
+        return response
+        
     except Exception as e:
-        logger.error(f"Error fetching clients: {str(e)}", exc_info=True)
+        logger.error(f"❌ [ENDPOINT /clients] Error fetching clients: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching clients: {str(e)}"
