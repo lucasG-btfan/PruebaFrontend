@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from config.database import get_db
@@ -12,10 +12,17 @@ from schemas.client_schema import (
 from models.client import ClientModel
 from models.address import AddressModel
 import logging
+import math
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+def get_current_user_id_key(authorization: str = Header(...)):
+    try:
+        return int(authorization.split(" ")[-1])
+    except:
+        return None
 
 @router.get("/test")
 async def test_clients():
@@ -34,7 +41,8 @@ async def search_clients(
     q: str = Query(..., min_length=1, description="Término de búsqueda"),
     skip: int = Query(0, ge=0, description="Número de registros a saltar"),
     limit: int = Query(10, ge=1, le=100, description="Máximo número de registros"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id_key: int = Depends(get_current_user_id_key)
 ):
     """Buscar clientes por nombre, apellido o email."""
     try:
@@ -47,6 +55,9 @@ async def search_clients(
             func.lower(ClientModel.email).ilike(f"%{q.lower()}%") |
             func.lower(ClientModel.phone).ilike(f"%{q.lower()}%")
         )
+
+        if current_user_id_key != 0:
+            search_filter = search_filter.filter(ClientModel.id_key == current_user_id_key)
 
         clients = search_filter.offset(skip).limit(limit).all()
         total = search_filter.count()
@@ -69,25 +80,27 @@ async def search_clients(
             detail=f"Error searching clients: {str(e)}"
         )
 
-
 @router.get("", response_model=ClientListResponseSchema)
 @router.get("/", response_model=ClientListResponseSchema)
 async def get_clients(
     skip: int = Query(0, ge=0, description="Número de registros a saltar"),
     limit: int = Query(10, ge=1, le=100, description="Máximo número de registros"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id_key: int = Depends(get_current_user_id_key)
 ):
     """Obtener lista de clientes con paginación."""
     try:
         logger.info(f"Fetching clients: skip={skip}, limit={limit}")
 
-        clients = db.query(ClientModel).filter(
+        query = db.query(ClientModel).filter(
             ClientModel.is_active == True
-        ).offset(skip).limit(limit).all()
+        )
 
-        total = db.query(ClientModel).filter(
-            ClientModel.is_active == True
-        ).count()
+        if current_user_id_key != 0:
+            query = query.filter(ClientModel.id_key == current_user_id_key)
+
+        clients = query.offset(skip).limit(limit).all()
+        total = query.count()
 
         pages = (total + limit - 1) // limit if limit > 0 else 1
         current_page = (skip // limit) + 1 if limit > 0 else 1
@@ -108,8 +121,18 @@ async def get_clients(
         )
 
 @router.get("/{client_id}", response_model=ClientResponseSchema)
-async def get_client(client_id: int, db: Session = Depends(get_db)):
+async def get_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user_id_key: int = Depends(get_current_user_id_key)
+):
     """Get a specific client by id_key."""
+    if current_user_id_key != 0 and client_id != current_user_id_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para ver este perfil"
+        )
+
     client = db.query(ClientModel).filter(
         ClientModel.id_key == client_id,
         ClientModel.is_active == True
@@ -124,8 +147,19 @@ async def get_client(client_id: int, db: Session = Depends(get_db)):
 
 @router.post("", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
-async def create_client(client_data: ClientCreateSchema, db: Session = Depends(get_db)):
+async def create_client(
+    client_data: ClientCreateSchema,
+    db: Session = Depends(get_db),
+    current_user_id_key: int = Depends(get_current_user_id_key)
+):
     """Create a new client."""
+    # El admin no puede crear clientes
+    if current_user_id_key == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin no puede crear clientes"
+        )
+
     try:
         logger.info(f"Creating client: {client_data.email}")
 
@@ -168,9 +202,17 @@ async def create_client(client_data: ClientCreateSchema, db: Session = Depends(g
 async def update_client(
     client_id: int,
     client_data: ClientUpdateSchema,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id_key: int = Depends(get_current_user_id_key)
 ):
     """Update an existing client."""
+    # Si no es admin, solo puede actualizar su propio perfil
+    if current_user_id_key != 0 and client_id != current_user_id_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para actualizar este perfil"
+        )
+
     client = db.query(ClientModel).filter(
         ClientModel.id_key == client_id,
         ClientModel.is_active == True
@@ -203,8 +245,19 @@ async def update_client(
         )
 
 @router.delete("/{client_id}", response_model=dict)
-async def delete_client(client_id: int, db: Session = Depends(get_db)):
+async def delete_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user_id_key: int = Depends(get_current_user_id_key)
+):
     """Delete a client (soft delete)."""
+    # Si no es admin, solo puede eliminar su propio perfil
+    if current_user_id_key != 0 and client_id != current_user_id_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar este perfil"
+        )
+
     client = db.query(ClientModel).filter(
         ClientModel.id_key == client_id,
         ClientModel.is_active == True
