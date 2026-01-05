@@ -1,13 +1,47 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from config.database import get_db
 from schemas.client_schema import ClientLoginSchema, ClientRegisterSchema
 from models.client import ClientModel
 from services.auth_service import AuthService
+from jose import jwt
+import os
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+security = HTTPBearer()
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        client_id: int = payload.get("sub")
+        if client_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+        return int(client_id)
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
 
 @router.post("/login")
 async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
@@ -31,9 +65,13 @@ async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
         logger.warning(f"Invalid password for: {login_data.email}")
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
+    access_token = create_access_token(data={"sub": str(client.id_key)})
+
     logger.info(f"Login successful for: {login_data.email}")
     return {
         "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "bearer",
         "client_id": client.id_key,
         "email": client.email,
         "name": f"{client.name} {client.lastname}"
@@ -55,6 +93,9 @@ async def register(register_data: ClientRegisterSchema, db: Session = Depends(ge
     if register_data.password.get_secret_value() != register_data.confirm_password.get_secret_value():
         logger.warning(f"Passwords don't match for: {register_data.email}")
         raise HTTPException(status_code=400, detail="Passwords do not match")
+
+    if register_data.id_key == 0:
+        raise HTTPException(status_code=403, detail="Forbidden: Cannot register admin user")
 
     salt = AuthService.generate_salt()
     password_hash = AuthService.hash_password(
