@@ -12,19 +12,20 @@ from schemas.client_schema import (
 from models.client import ClientModel
 from models.address import AddressModel
 import logging
-from jose import jwt
+from jose import jwt, JWTError
 import os
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Configuración JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 security = HTTPBearer()
 
-def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def get_current_user_id_key(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> int:
     """
     Extrae el client_id del token JWT.
     Esta función es una DEPENDENCIA de FastAPI.
@@ -33,7 +34,6 @@ def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(
         token = credentials.credentials
         logger.info(f"🔐 Token recibido: {token[:50]}...")
 
-        # Decodificar el JWT
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         client_id_str = payload.get("sub")
 
@@ -61,7 +61,7 @@ def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired"
         )
-    except jwt.JWTError as e:
+    except JWTError as e:
         logger.error(f"❌ Error JWT: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -92,7 +92,7 @@ async def debug_auth(current_user_id_key: int = Depends(get_current_user_id_key)
     return {
         "current_user_id_key": current_user_id_key,
         "is_admin": current_user_id_key == 0,
-        "message": "Auth debug"
+        "message": "Auth debug funcionando correctamente"
     }
 
 @router.get("/search", response_model=ClientListResponseSchema)
@@ -103,8 +103,8 @@ async def search_clients(
     db: Session = Depends(get_db),
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
-    """Buscar clientes por nombre, apellido o email."""
-    logger.info(f"🔍 [SEARCH] Llamado con q={q}, skip={skip}, limit={limit}, user={current_user_id_key}")
+    """Buscar clientes por nombre, apellido, email o teléfono."""
+    logger.info(f"🔍 [SEARCH] q={q}, skip={skip}, limit={limit}, user={current_user_id_key}")
 
     try:
         search_filter = db.query(ClientModel).filter(
@@ -115,15 +115,18 @@ async def search_clients(
             func.lower(ClientModel.phone).ilike(f"%{q.lower()}%")
         )
 
+        # Filtrar por usuario si no es admin
         if current_user_id_key != 0:
             search_filter = search_filter.filter(ClientModel.id_key == current_user_id_key)
 
+        # Obtener resultados
         clients = search_filter.offset(skip).limit(limit).all()
         total = search_filter.count()
         pages = (total + limit - 1) // limit if limit > 0 else 1
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
         logger.info(f"✅ [SEARCH] Encontrados {len(clients)} clientes, total: {total}")
+        
         return {
             "items": clients,
             "total": total,
@@ -148,30 +151,26 @@ async def get_clients(
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
     """Obtener lista de clientes con paginación."""
-    logger.info(f"🔍 [GET /clients] Llamado con skip={skip}, limit={limit}, user={current_user_id_key}")
+    logger.info(f"🔍 [GET /clients] skip={skip}, limit={limit}, user={current_user_id_key}")
 
     try:
         # Construir query base
-        query = db.query(ClientModel).filter(
-            ClientModel.is_active == True
-        )
+        query = db.query(ClientModel).filter(ClientModel.is_active == True)
 
         # Filtrar por usuario si no es admin
         if current_user_id_key != 0:
             query = query.filter(ClientModel.id_key == current_user_id_key)
-            logger.info(f"🔍 [GET /clients] Filtrando solo cliente {current_user_id_key}")
+            logger.info(f"🔍 Usuario regular: filtrando solo cliente {current_user_id_key}")
         else:
-            logger.info(f"🔍 [GET /clients] Admin viendo todos los clientes")
+            logger.info(f"🔍 Admin: viendo todos los clientes")
 
-        # Obtener resultados paginados
         clients = query.offset(skip).limit(limit).all()
         total = query.count()
 
-        # Calcular paginación
         pages = (total + limit - 1) // limit if limit > 0 else 1
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
-        logger.info(f"✅ [GET /clients] Enviando {len(clients)} clientes, total: {total}, pages: {pages}")
+        logger.info(f"✅ [GET /clients] Retornando {len(clients)} clientes, total: {total}")
 
         return {
             "items": clients,
@@ -194,25 +193,31 @@ async def get_client(
     db: Session = Depends(get_db),
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
-    """Get a specific client by id_key."""
+    """Obtener un cliente específico por id_key."""
     logger.info(f"🔍 [GET /clients/{client_id}] user={current_user_id_key}")
 
+    # Verificar permisos
     if current_user_id_key != 0 and client_id != current_user_id_key:
+        logger.warning(f"❌ Usuario {current_user_id_key} intentó acceder al perfil {client_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para ver este perfil"
         )
 
+    # Buscar cliente
     client = db.query(ClientModel).filter(
         ClientModel.id_key == client_id,
         ClientModel.is_active == True
     ).first()
 
     if not client:
+        logger.warning(f"❌ Cliente {client_id} no encontrado")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Client with ID {client_id} not found"
         )
+    
+    logger.info(f"✅ Cliente {client_id} encontrado")
     return client
 
 @router.post("", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
@@ -222,47 +227,46 @@ async def create_client(
     db: Session = Depends(get_db),
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
-    """Create a new client."""
-    # El admin no puede crear clientes
+    """Crear un nuevo cliente."""
+    # El admin no puede crear clientes 
     if current_user_id_key == 0:
+        logger.warning("❌ Admin intentó crear cliente desde /clients")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin no puede crear clientes"
+            detail="Admin no puede crear clientes. Use /auth/register"
         )
 
     try:
-        logger.info(f"Creating client: {client_data.email}")
+        logger.info(f"📝 Creando cliente: {client_data.email}")
 
+        # Verificar email duplicado
         existing_client = db.query(ClientModel).filter(
             ClientModel.email == client_data.email
         ).first()
 
         if existing_client:
+            logger.warning(f"❌ Email ya registrado: {client_data.email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
 
+        # Crear cliente (sin address por ahora)
         client_dict = client_data.dict(exclude={"address"})
-        logger.info(f"Creating client with data: {client_dict}")
-
         client = ClientModel(**client_dict)
+        
         db.add(client)
         db.commit()
         db.refresh(client)
 
-        logger.info(f"Client created successfully: {client.id_key}")
+        logger.info(f"✅ Cliente creado exitosamente: {client.id_key}")
         return client
 
-    except HTTPException as he:
-        logger.warning(f"HTTP Exception: {he.detail}")
-        raise he
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error creating client: {str(e)}", exc_info=True)
+        logger.error(f"❌ Error creating client: {str(e)}", exc_info=True)
         db.rollback()
-        import traceback
-        error_details = traceback.format_exc()
-        logger.error(f"Full traceback: {error_details}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating client: {str(e)}"
@@ -275,39 +279,50 @@ async def update_client(
     db: Session = Depends(get_db),
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
-    """Update an existing client."""
+    """Actualizar un cliente existente."""
+    logger.info(f"📝 [UPDATE] client_id={client_id}, user={current_user_id_key}")
 
+    # Verificar permisos
     if current_user_id_key != 0 and client_id != current_user_id_key:
+        logger.warning(f"❌ Usuario {current_user_id_key} intentó actualizar cliente {client_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para actualizar este perfil"
         )
 
+    # Buscar cliente
     client = db.query(ClientModel).filter(
         ClientModel.id_key == client_id,
         ClientModel.is_active == True
     ).first()
 
     if not client:
+        logger.warning(f"❌ Cliente {client_id} no encontrado")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Client with ID {client_id} not found"
         )
 
     try:
+        # Actualizar solo campos enviados
         update_data = client_data.dict(exclude_unset=True)
+        
         if 'address' in update_data:
             del update_data['address']
 
+        # Aplicar cambios
         for key, value in update_data.items():
             if hasattr(client, key):
                 setattr(client, key, value)
 
         db.commit()
         db.refresh(client)
+        
+        logger.info(f"✅ Cliente {client_id} actualizado exitosamente")
         return client
 
     except Exception as e:
+        logger.error(f"❌ Error updating client: {str(e)}", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -320,32 +335,42 @@ async def delete_client(
     db: Session = Depends(get_db),
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
-    """Delete a client (soft delete)."""
-    # Si no es admin, solo puede eliminar su propio perfil
+    """Eliminar un cliente (soft delete)."""
+    logger.info(f"🗑️ [DELETE] client_id={client_id}, user={current_user_id_key}")
+
+    # Verificar permisos
     if current_user_id_key != 0 and client_id != current_user_id_key:
+        logger.warning(f"❌ Usuario {current_user_id_key} intentó eliminar cliente {client_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para eliminar este perfil"
         )
 
+    # Buscar cliente
     client = db.query(ClientModel).filter(
         ClientModel.id_key == client_id,
         ClientModel.is_active == True
     ).first()
 
     if not client:
+        logger.warning(f"❌ Cliente {client_id} no encontrado")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Client with ID {client_id} not found"
         )
 
     try:
+        # Soft delete
         client.is_active = False
         client.deleted_at = func.now()
+        
         db.commit()
+        
+        logger.info(f"✅ Cliente {client_id} eliminado exitosamente")
         return {"message": f"Client {client_id} deleted successfully"}
 
     except Exception as e:
+        logger.error(f"❌ Error deleting client: {str(e)}", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
