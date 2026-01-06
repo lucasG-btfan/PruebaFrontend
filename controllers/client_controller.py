@@ -19,7 +19,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Configuración JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 security = HTTPBearer()
@@ -109,7 +108,6 @@ async def search_clients(
     logger.info(f"🔍 [SEARCH] q={q}, skip={skip}, limit={limit}, user={current_user_id_key}")
 
     try:
-        # Construir query base
         search_filter = db.query(ClientModel).filter(
             ClientModel.is_active == True,
             func.lower(ClientModel.name).ilike(f"%{q.lower()}%") |
@@ -118,7 +116,6 @@ async def search_clients(
             func.lower(ClientModel.phone).ilike(f"%{q.lower()}%")
         )
 
-        # Filtrar por usuario si no es admin
         if current_user_id_key != 0:
             search_filter = search_filter.filter(ClientModel.id_key == current_user_id_key)
 
@@ -157,7 +154,6 @@ async def get_clients(
     logger.info(f"🔍 [GET /clients] skip={skip}, limit={limit}, user={current_user_id_key}")
 
     try:
-        # Construir query base
         query = db.query(ClientModel).filter(ClientModel.is_active == True)
 
         # Filtrar por usuario si no es admin
@@ -167,11 +163,8 @@ async def get_clients(
         else:
             logger.info(f"🔍 Admin: viendo todos los clientes")
 
-        # Obtener resultados paginados
         clients = query.offset(skip).limit(limit).all()
         total = query.count()
-
-        # Calcular paginación
         pages = (total + limit - 1) // limit if limit > 0 else 1
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
@@ -209,7 +202,6 @@ async def get_client(
             detail="No tienes permiso para ver este perfil"
         )
 
-    # Buscar cliente
     client = db.query(ClientModel).filter(
         ClientModel.id_key == client_id,
         ClientModel.is_active == True
@@ -244,7 +236,6 @@ async def create_client(
     try:
         logger.info(f"📝 Creando cliente: {client_data.email}")
 
-        # Verificar email duplicado
         existing_client = db.query(ClientModel).filter(
             ClientModel.email == client_data.email
         ).first()
@@ -256,6 +247,7 @@ async def create_client(
                 detail="Email already registered"
             )
 
+        # Crear cliente 
         client_dict = client_data.dict(exclude={"address"})
         client = ClientModel(**client_dict)
         
@@ -313,7 +305,6 @@ async def update_client(
         if 'address' in update_data:
             del update_data['address']
 
-        # Aplicar cambios
         for key, value in update_data.items():
             if hasattr(client, key):
                 setattr(client, key, value)
