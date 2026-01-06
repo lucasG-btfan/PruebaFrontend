@@ -19,6 +19,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Configuración JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 security = HTTPBearer()
@@ -34,6 +35,7 @@ def get_current_user_id_key(
         token = credentials.credentials
         logger.info(f"🔐 Token recibido: {token[:50]}...")
 
+        # Decodificar el JWT
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         client_id_str = payload.get("sub")
 
@@ -107,6 +109,7 @@ async def search_clients(
     logger.info(f"🔍 [SEARCH] q={q}, skip={skip}, limit={limit}, user={current_user_id_key}")
 
     try:
+        # Construir query base
         search_filter = db.query(ClientModel).filter(
             ClientModel.is_active == True,
             func.lower(ClientModel.name).ilike(f"%{q.lower()}%") |
@@ -164,9 +167,11 @@ async def get_clients(
         else:
             logger.info(f"🔍 Admin: viendo todos los clientes")
 
+        # Obtener resultados paginados
         clients = query.offset(skip).limit(limit).all()
         total = query.count()
 
+        # Calcular paginación
         pages = (total + limit - 1) // limit if limit > 0 else 1
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
@@ -251,7 +256,6 @@ async def create_client(
                 detail="Email already registered"
             )
 
-        # Crear cliente (sin address por ahora)
         client_dict = client_data.dict(exclude={"address"})
         client = ClientModel(**client_dict)
         
@@ -304,7 +308,6 @@ async def update_client(
         )
 
     try:
-        # Actualizar solo campos enviados
         update_data = client_data.dict(exclude_unset=True)
         
         if 'address' in update_data:
