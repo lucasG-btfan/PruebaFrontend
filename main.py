@@ -163,6 +163,8 @@ try:
     from controllers.client_controller import router as client_router
     from controllers.auth_controller import router as auth_router
     from controllers.address_controller import router as address_router
+    from controllers import client_controller, auth_controller, debug_controller
+
     
     logger.info("✓ Routers importados correctamente")
     
@@ -172,8 +174,9 @@ try:
     app.include_router(client_router, prefix="/api/v1", tags=["Clients"])
     app.include_router(bill_router, prefix="/api/v1", tags=["Bills"])
     app.include_router(order_detail_router, prefix="/api/v1", tags=["Order Details"])
-    app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
     app.include_router(address_router, prefix="/api/v1", tags=["Addresses"])
+    app.include_router(debug_controller.router, prefix="/api/v1/debug", tags=["Debug"])
 
     logger.info("✓ Routers registrados correctamente")
     
