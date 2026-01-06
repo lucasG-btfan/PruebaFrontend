@@ -30,13 +30,16 @@ def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(
     try:
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        client_id: int = payload.get("sub")
-        if client_id is None:
+        client_id_str = payload.get("sub")
+        
+        if client_id_str is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials"
             )
-        return int(client_id)
+        
+        return int(client_id_str)
+        
     except jwt.JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

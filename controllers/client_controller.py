@@ -1,5 +1,5 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from config.database import get_db
@@ -12,97 +12,63 @@ from schemas.client_schema import (
 from models.client import ClientModel
 from models.address import AddressModel
 import logging
-import math
 from jose import jwt
-import json
-import base64
+import os
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-def get_current_user_id_key(authorization: str = Header(None, alias="Authorization")) -> Optional[int]:
+# Configuración JWT
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+ALGORITHM = "HS256"
+security = HTTPBearer()
+
+def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
-    Función robusta que maneja JWT y formato antiguo.
+    Extrae el client_id del token JWT.
+    Esta función es una DEPENDENCIA de FastAPI.
     """
-    logger.info(f"🔍 Authorization header: {authorization}")
-    
-    if not authorization:
-        logger.warning("⚠️ No Authorization header")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header"
-        )
-    
     try:
-        
-        if authorization.startswith("Bearer "):
-            token = authorization[7:]  
-        else:
-            token = authorization
-        
-        logger.info(f"🔍 Token extraído: {token[:50]}...")
-        
-        # Opción 1: Intentar como JWT
-        if token.count('.') == 2:
-            try:
-                
-                parts = token.split('.')
-                payload_b64 = parts[1]
-                
-                missing_padding = len(payload_b64) % 4
-                if missing_padding:
-                    payload_b64 += '=' * (4 - missing_padding)
-                
-                payload_json = base64.urlsafe_b64decode(payload_b64)
-                payload = json.loads(payload_json)
-                
-                client_id_str = payload.get('sub')
-                logger.info(f"✅ JWT decodificado: {payload}")
-                
-                if client_id_str is not None:
-                    try:
-                        client_id = int(client_id_str)
-                        logger.info(f"✅ JWT decodificado exitosamente: client_id={client_id}")
-                        return client_id
-                    except ValueError:
-                        logger.error(f"❌ client_id no es entero: {client_id_str}")
-                        raise HTTPException(
-                            status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Invalid token format"
-                        )
-                else:
-                    logger.error("❌ No 'sub' field in JWT payload")
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid token payload"
-                    )
-                        
-            except HTTPException:
-                raise
-            except Exception as jwt_error:
-                logger.warning(f"⚠️ Error decodificando JWT: {str(jwt_error)}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"Invalid token: {str(jwt_error)}"
-                )
-        
-        # Opción 2: Intentar como número directo (fallback)
-        try:
-            client_id = int(token)
-            logger.info(f"✅ Token interpretado como número: {client_id}")
-            return client_id
-        except ValueError:
-            logger.error(f"❌ Token no es JWT válido ni número: {token}")
+        token = credentials.credentials
+        logger.info(f"🔐 Token recibido: {token[:50]}...")
+
+        # Decodificar el JWT
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        client_id_str = payload.get("sub")
+
+        if client_id_str is None:
+            logger.error("❌ Token no contiene 'sub'")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token format"
+                detail="Invalid token: missing 'sub' field"
             )
-            
-    except HTTPException:
-        raise
+
+        try:
+            client_id = int(client_id_str)
+            logger.info(f"✅ Client ID extraído: {client_id}")
+            return client_id
+        except ValueError:
+            logger.error(f"❌ 'sub' no es un número válido: {client_id_str}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: 'sub' must be a number"
+            )
+
+    except jwt.ExpiredSignatureError:
+        logger.error("❌ Token expirado")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.JWTError as e:
+        logger.error(f"❌ Error JWT: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {str(e)}"
+        )
     except Exception as e:
-        logger.error(f"❌ Error en get_current_user_id_key: {str(e)}")
+        logger.error(f"❌ Error inesperado en autenticación: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authentication error"
@@ -122,10 +88,11 @@ async def test_clients():
 
 @router.get("/debug-auth")
 async def debug_auth(current_user_id_key: int = Depends(get_current_user_id_key)):
+    """Endpoint para debug de autenticación."""
     return {
         "current_user_id_key": current_user_id_key,
-        "message": "Debug endpoint",
-        "is_admin": current_user_id_key == 0 if current_user_id_key is not None else False
+        "is_admin": current_user_id_key == 0,
+        "message": "Auth debug"
     }
 
 @router.get("/search", response_model=ClientListResponseSchema)
@@ -138,7 +105,7 @@ async def search_clients(
 ):
     """Buscar clientes por nombre, apellido o email."""
     logger.info(f"🔍 [SEARCH] Llamado con q={q}, skip={skip}, limit={limit}, user={current_user_id_key}")
-    
+
     try:
         search_filter = db.query(ClientModel).filter(
             ClientModel.is_active == True,
@@ -173,6 +140,7 @@ async def search_clients(
         )
 
 @router.get("", response_model=ClientListResponseSchema)
+@router.get("/", response_model=ClientListResponseSchema)
 async def get_clients(
     skip: int = Query(0, ge=0, description="Número de registros a saltar"),
     limit: int = Query(10, ge=1, le=100, description="Máximo número de registros"),
@@ -181,25 +149,30 @@ async def get_clients(
 ):
     """Obtener lista de clientes con paginación."""
     logger.info(f"🔍 [GET /clients] Llamado con skip={skip}, limit={limit}, user={current_user_id_key}")
-    
+
     try:
+        # Construir query base
         query = db.query(ClientModel).filter(
             ClientModel.is_active == True
         )
 
+        # Filtrar por usuario si no es admin
         if current_user_id_key != 0:
             query = query.filter(ClientModel.id_key == current_user_id_key)
             logger.info(f"🔍 [GET /clients] Filtrando solo cliente {current_user_id_key}")
         else:
             logger.info(f"🔍 [GET /clients] Admin viendo todos los clientes")
 
+        # Obtener resultados paginados
         clients = query.offset(skip).limit(limit).all()
         total = query.count()
 
+        # Calcular paginación
         pages = (total + limit - 1) // limit if limit > 0 else 1
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
         logger.info(f"✅ [GET /clients] Enviando {len(clients)} clientes, total: {total}, pages: {pages}")
+
         return {
             "items": clients,
             "total": total,
@@ -207,6 +180,7 @@ async def get_clients(
             "size": limit,
             "pages": pages
         }
+
     except Exception as e:
         logger.error(f"❌ Error fetching clients: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -214,7 +188,6 @@ async def get_clients(
             detail=f"Error fetching clients: {str(e)}"
         )
 
-# El resto del archivo se mantiene igual...
 @router.get("/{client_id}", response_model=ClientResponseSchema)
 async def get_client(
     client_id: int,
@@ -223,7 +196,7 @@ async def get_client(
 ):
     """Get a specific client by id_key."""
     logger.info(f"🔍 [GET /clients/{client_id}] user={current_user_id_key}")
-    
+
     if current_user_id_key != 0 and client_id != current_user_id_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -241,7 +214,6 @@ async def get_client(
             detail=f"Client with ID {client_id} not found"
         )
     return client
-
 
 @router.post("", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=ClientResponseSchema, status_code=status.HTTP_201_CREATED)
