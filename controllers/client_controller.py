@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-def get_current_user_id_key(authorization: str = Header(None, alias="Authorization")):
+def get_current_user_id_key(authorization: str = Header(None, alias="Authorization")) -> Optional[int]:
     """
     Función robusta que maneja JWT y formato antiguo.
     """
@@ -29,25 +29,27 @@ def get_current_user_id_key(authorization: str = Header(None, alias="Authorizati
     
     if not authorization:
         logger.warning("⚠️ No Authorization header")
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header"
+        )
     
     try:
-        # Extraer token después de "Bearer "
+        
         if authorization.startswith("Bearer "):
-            token = authorization[7:]  # Remove "Bearer "
+            token = authorization[7:]  
         else:
             token = authorization
         
         logger.info(f"🔍 Token extraído: {token[:50]}...")
         
         # Opción 1: Intentar como JWT
-        if token.count('.') == 2:  # Es un JWT (header.payload.signature)
+        if token.count('.') == 2:
             try:
-                # Decodificar payload del JWT (sin verificar firma)
+                
                 parts = token.split('.')
                 payload_b64 = parts[1]
                 
-                # Añadir padding si es necesario
                 missing_padding = len(payload_b64) % 4
                 if missing_padding:
                     payload_b64 += '=' * (4 - missing_padding)
@@ -55,32 +57,56 @@ def get_current_user_id_key(authorization: str = Header(None, alias="Authorizati
                 payload_json = base64.urlsafe_b64decode(payload_b64)
                 payload = json.loads(payload_json)
                 
-                client_id = payload.get('sub')
+                client_id_str = payload.get('sub')
                 logger.info(f"✅ JWT decodificado: {payload}")
                 
-                if client_id is not None:
+                if client_id_str is not None:
                     try:
-                        return int(client_id)
+                        client_id = int(client_id_str)
+                        logger.info(f"✅ JWT decodificado exitosamente: client_id={client_id}")
+                        return client_id
                     except ValueError:
-                        logger.error(f"❌ client_id no es entero: {client_id}")
-                        return None
+                        logger.error(f"❌ client_id no es entero: {client_id_str}")
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid token format"
+                        )
+                else:
+                    logger.error("❌ No 'sub' field in JWT payload")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid token payload"
+                    )
                         
+            except HTTPException:
+                raise
             except Exception as jwt_error:
                 logger.warning(f"⚠️ Error decodificando JWT: {str(jwt_error)}")
-                # Continuar con opción 2
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Invalid token: {str(jwt_error)}"
+                )
         
-        # Opción 2: Intentar como número directo
+        # Opción 2: Intentar como número directo (fallback)
         try:
             client_id = int(token)
             logger.info(f"✅ Token interpretado como número: {client_id}")
             return client_id
         except ValueError:
-            logger.error(f"❌ Token no es JWT ni número: {token}")
-            return None
+            logger.error(f"❌ Token no es JWT válido ni número: {token}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token format"
+            )
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Error en get_current_user_id_key: {str(e)}")
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication error"
+        )
 
 @router.get("/test")
 async def test_clients():
@@ -94,7 +120,6 @@ async def test_clients():
         }
     }
 
-# IMPORTANTE: Añade este endpoint temporal para debug
 @router.get("/debug-auth")
 async def debug_auth(current_user_id_key: int = Depends(get_current_user_id_key)):
     return {
