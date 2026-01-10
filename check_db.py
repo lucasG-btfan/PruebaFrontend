@@ -2,7 +2,7 @@
 import os
 
 # Configurar variable de entorno
-os.environ['DATABASE_URL'] = 'postgresql://ecommerce_db_pg18_user:8wj5MwKBGSfrK3ZG6vADvjT5pkc4ai7u@dpg-d4riokmr433s73a9vb70-a.ohio-postgres.render.com/ecommerce_db_pg18'
+os.environ['DATABASE_URL'] = 'postgresql://ecommerce_user:UNxrz1fhXoP4UO05SuhemYYFs9xVDOtR@dpg-d5g0in6mcj7s7398mk00-a.ohio-postgres.render.com/ecommerce_db_p8ry'
 
 from sqlalchemy import create_engine, text
 

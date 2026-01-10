@@ -17,7 +17,7 @@ import os
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(prefix="/clients")  
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"

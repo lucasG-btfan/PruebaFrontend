@@ -168,7 +168,7 @@ try:
     # Registrar routers
     app.include_router(product_router, prefix="/api/v1", tags=["Products"])
     app.include_router(order_router, prefix="/api/v1", tags=["Orders"])
-    app.include_router(client_router, prefix="/api/v1", tags=["Clients"])  
+    app.include_router(client_router, prefix="/api/v1", tags=["Clients"])
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
     app.include_router(address_router, prefix="/api/v1", tags=["Addresses"])
     app.include_router(bill_router, prefix="/api/v1", tags=["Bills"])
@@ -182,6 +182,18 @@ except Exception as e:
 logger.info("=" * 60)
 logger.info("✓ APLICACIÓN INICIADA CORRECTAMENTE")
 logger.info("=" * 60)
+
+logger.info("Rutas registradas en FastAPI:")
+for route in app.routes:
+    logger.info(f" - {route.path}")
+
+from controllers.client_controller import router as client_router
+logger.info("Rutas en el router de clientes:")
+for route in client_router.routes:
+    logger.info(f" - {route.path}")
+
+app.include_router(client_router, prefix="/api/v1", tags=["Clients"])
+
 
 # if __name__ == "__main__":
 #     import uvicorn

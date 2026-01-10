@@ -12,7 +12,7 @@ database_url = os.getenv("DATABASE_URL", "").strip()
 # Si DATABASE_URL está vacío, usar el valor por defecto
 if not database_url:
     logger.warning("⚠️ DATABASE_URL environment variable is empty or not set")
-    database_url = "postgresql://ecommerce_db_pg18_user:8wj5MwKBGSfrK3ZG6vADvjT5pkc4ai7u@dpg-d4riokmr433s73a9vb70-a.ohio-postgres.render.com/ecommerce_db_pg18"
+    database_url = "postgresql://ecommerce_user:UNxrz1fhXoP4UO05SuhemYYFs9xVDOtR@dpg-d5g0in6mcj7s7398mk00-a.ohio-postgres.render.com/ecommerce_db_p8ry"
 
 # ✅ Corregir protocolo
 if database_url.startswith("postgres://"):
