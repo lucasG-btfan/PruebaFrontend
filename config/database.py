@@ -1,51 +1,38 @@
 import os
 import logging
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-# ✅ Obtener URL de base de datos 
 database_url = os.getenv("DATABASE_URL", "").strip()
 
-# Si DATABASE_URL está vacío, usar el valor por defecto
 if not database_url:
-    logger.warning("⚠️ DATABASE_URL environment variable is empty or not set")
-    database_url = "postgresql://ecommerce_user:UNxrz1fhXoP4UO05SuhemYYFs9xVDOtR@dpg-d5g0in6mcj7s7398mk00-a.ohio-postgres.render.com/ecommerce_db_p8ry"
+    logger.warning("⚠️ DATABASE_URL no está configurada. Usando valor por defecto para desarrollo local.")
+    database_url = "postgresql://postgres:postgres@localhost:5432/ecommerce_db"
 
-# ✅ Corregir protocolo
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-logger.info(f"🔗 Database URL: {database_url[:50]}...")
+logger.info(f"🔗 Conectando a la base de datos: {database_url[:50]}...")
 
-# ✅ Crear engine
 engine = create_engine(
     database_url,
-    echo=False,
-    poolclass=NullPool,
-    pool_pre_ping=True,
+    echo=False,  
+    poolclass=NullPool,  
+    pool_pre_ping=True,  
     connect_args={
-        "sslmode": "require",
-        "connect_timeout": 10,
+        "sslmode": "require",  
+        "connect_timeout": 10,  
     }
 )
 
-# ❌ NO crear nueva Base aquí, importar la tuya
-def get_base():
-    """Import and return the Base from models."""
-    try:
-        from models.base_model import Base
-        return Base
-    except ImportError as e:
-        logger.error(f"❌ Failed to import Base: {e}")
-        raise
+Base = declarative_base()
 
-# Obtener Base desde models
-Base = get_base()
-
-# Crear sessionmaker con la Base correcta
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -53,7 +40,7 @@ SessionLocal = sessionmaker(
 )
 
 def get_db():
-    """Dependency for getting database session."""
+    """Dependency para obtener una sesión de la base de datos."""
     db = SessionLocal()
     try:
         yield db
@@ -61,70 +48,66 @@ def get_db():
         db.close()
 
 def initialize_models():
-    """Import all models to register them with Base."""
+    """Importar todos los modelos para registrarlos con Base."""
     try:
-        # Importar todos los modelos para que se registren automáticamente
-        # El import de __init__.py ya hace esto
-        from models import ClientModel, BillModel, OrderModel, OrderDetailModel, ProductModel, CategoryModel, AddressModel, ReviewModel
-        
-        logger.info("✅ Models imported successfully")
-        
+        from models import (
+            ClientModel, BillModel, OrderModel, OrderDetailModel,
+            ProductModel, CategoryModel, AddressModel, ReviewModel
+        )
+        logger.info("✅ Modelos importados correctamente")
+
         # Verificar que los modelos están registrados
         if hasattr(Base, 'registry') and hasattr(Base.registry, '_class_registry'):
             registered_classes = list(Base.registry._class_registry.keys())
-            logger.info(f"📦 Classes registered with Base: {registered_classes}")
-        
+            logger.info(f"📦 Clases registradas con Base: {registered_classes}")
+
         return True
     except Exception as e:
-        logger.error(f"❌ Error initializing models: {e}")
+        logger.error(f"❌ Error al inicializar modelos: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return False
 
 def create_tables():
-    """Create all database tables."""
+    """Crear todas las tablas de la base de datos."""
     try:
-        logger.info("🔨 Creating database tables...")
-        
-        # Primero asegurarse de que los modelos están importados
+        logger.info("🔨 Creando tablas en la base de datos...")
+
         if not initialize_models():
-            logger.error("❌ Failed to initialize models")
+            logger.error("❌ Falló la inicialización de modelos")
             return False
-        
-        # Crear tablas
+
         Base.metadata.create_all(bind=engine)
-        
-        # Verificar tablas creadas
+
         inspector = inspect(engine)
         created_tables = inspector.get_table_names()
-        logger.info(f"✅ Tables created successfully: {created_tables}")
-        
+        logger.info(f"✅ Tablas creadas correctamente: {created_tables}")
+
         return True
     except Exception as e:
-        logger.error(f"❌ Failed to create database tables: {e}")
+        logger.error(f"❌ Falló la creación de tablas: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return False
 
 def check_connection():
-    """Check if database is accessible."""
+    """Verificar si la base de datos es accesible."""
     try:
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             data = result.scalar()
-            logger.info(f"✅ Database connection: SUCCESS - {data}")
-            
+            logger.info(f"✅ Conexión a la base de datos: ÉXITO - {data}")
+
             # Opcional: verificar versión de PostgreSQL
             result = conn.execute(text("SELECT version()"))
             version = result.scalar()
-            logger.info(f"📊 PostgreSQL version: {version[:50]}...")
-            
+            logger.info(f"📊 Versión de PostgreSQL: {version[:50]}...")
+
             return True
     except Exception as e:
-        logger.error(f"❌ Database connection: FAILED - {str(e)}")
+        logger.error(f"❌ Conexión a la base de datos: FALLIDA - {str(e)}")
         return False
 
-# Exportar Base también
 __all__ = [
     'engine',
     'SessionLocal',
