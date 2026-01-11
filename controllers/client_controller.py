@@ -14,10 +14,11 @@ from models.address import AddressModel
 import logging
 from jose import jwt, JWTError
 import os
+from datetime import datetime
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/clients")  
+router = APIRouter(prefix="/clients")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
@@ -32,14 +33,14 @@ def get_current_user_id_key(
     """
     try:
         token = credentials.credentials
-        logger.info(f"🔐 Token recibido: {token[:50]}...")
+        logger.debug(f"🔐 Token recibido (primeros 50 chars): {token[:50]}...")
 
         # Decodificar el JWT
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         client_id_str = payload.get("sub")
 
         if client_id_str is None:
-            logger.error("❌ Token no contiene 'sub'")
+            logger.error("❌ Token no contiene 'sub' (subject)")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing 'sub' field"
@@ -69,11 +70,33 @@ def get_current_user_id_key(
             detail=f"Invalid token: {str(e)}"
         )
     except Exception as e:
-        logger.error(f"❌ Error inesperado en autenticación: {str(e)}")
+        logger.error(f"❌ Error inesperado en autenticación: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authentication error"
         )
+
+@router.get("/test-public")
+async def test_public():
+    """Endpoint público para probar conectividad."""
+    logger.info("🌍 [TEST-PUBLIC] Endpoint público accedido")
+    return {
+        "message": "Public endpoint works",
+        "timestamp": datetime.now().isoformat(),
+        "status": "success"
+    }
+
+@router.get("/test-private")
+async def test_private(current_user_id_key: int = Depends(get_current_user_id_key)):
+    """Endpoint privado para probar autenticación y extracción del user_id."""
+    logger.info(f"🔒 [TEST-PRIVATE] Usuario autenticado: {current_user_id_key}")
+    return {
+        "message": "Private endpoint works",
+        "user_id": current_user_id_key,
+        "is_admin": current_user_id_key == 0,
+        "timestamp": datetime.now().isoformat(),
+        "status": "success"
+    }
 
 @router.get("/test")
 async def test_clients():
@@ -150,18 +173,19 @@ async def get_clients(
     db: Session = Depends(get_db),
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
-    """Obtener lista de clientes con paginación."""
+    """Obtener lista de clientes con paginación. Solo admin ve todos los clientes."""
     logger.info(f"🔍 [GET /clients] skip={skip}, limit={limit}, user={current_user_id_key}")
 
     try:
         query = db.query(ClientModel).filter(ClientModel.is_active == True)
 
-        # Filtrar por usuario si no es admin
+        # Solo admin puede ver todos los clientes
         if current_user_id_key != 0:
-            query = query.filter(ClientModel.id_key == current_user_id_key)
-            logger.info(f"🔍 Usuario regular: filtrando solo cliente {current_user_id_key}")
-        else:
-            logger.info(f"🔍 Admin: viendo todos los clientes")
+            logger.warning(f"⚠️ Usuario no admin ({current_user_id_key}) intentó acceder a todos los clientes")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo el administrador puede ver todos los clientes"
+            )
 
         clients = query.offset(skip).limit(limit).all()
         total = query.count()
@@ -169,7 +193,6 @@ async def get_clients(
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
         logger.info(f"✅ [GET /clients] Retornando {len(clients)} clientes, total: {total}")
-
         return {
             "items": clients,
             "total": total,
@@ -178,6 +201,8 @@ async def get_clients(
             "pages": pages
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Error fetching clients: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -185,7 +210,7 @@ async def get_clients(
             detail=f"Error fetching clients: {str(e)}"
         )
 
-@router.get("/{client_id}", response_model=ClientResponseSchema)  
+@router.get("/{client_id}", response_model=ClientResponseSchema)
 async def get_client(
     client_id: int,
     db: Session = Depends(get_db),
