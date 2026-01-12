@@ -1,158 +1,188 @@
 from __future__ import annotations
-from fastapi import APIRouter, HTTPException, Depends, status
-from typing import Dict, Any, List
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from schemas.order_schema import OrderCreateSchema, OrderUpdateSchema, OrderSchema, OrderResponseSchema
-from services.order_service import OrderService
 from config.database import get_db
-from middleware.auth_middleware import get_current_user
+from schemas.order_schema import (
+    OrderCreateSchema,
+    OrderUpdateSchema,
+    OrderSchema,
+    OrderResponseSchema,
+    OrderListSchema
+)
+from schemas.order_detail_schema import OrderDetailSchema
+from models.order import OrderModel
+from models.order_detail import OrderDetailModel
+from models.product import ProductModel
 from models.client import ClientModel
+from middleware.auth_middleware import get_current_user
 import logging
+from datetime import datetime
+import uuid
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(tags=["Orders"])
 
-@router.post("/orders", response_model=OrderResponseSchema, status_code=201)
-def create_order(
+@router.post("/orders", response_model=OrderResponseSchema)
+async def create_order(
     order_data: OrderCreateSchema,
     current_user: ClientModel = Depends(get_current_user),
     db: Session = Depends(get_db)
-):
-    """Crear una nueva orden."""
+) -> OrderResponseSchema:
+    """
+    Crear una nueva orden.
+    Solo el usuario autenticado puede crear órdenes para sí mismo.
+    """
     try:
-        logger.info(f"Creando nueva orden para usuario ID: {current_user.id_key}")
+        logger.info(f"Creando orden para usuario ID: {current_user.id_key}")
 
-        # Asegurar que el client_id de la orden coincida con el usuario autenticado
+        # Verificar que el usuario esté creando orden para sí mismo
         if order_data.client_id != current_user.id_key:
-            logger.warning(f"Intento de crear orden para otro usuario. Orden: {order_data.client_id}, Usuario: {current_user.id_key}")
+            logger.warning(f"Intento de crear orden para otro usuario. Auth: {current_user.id_key}, Request: {order_data.client_id}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No puedes crear órdenes para otros usuarios"
             )
 
-        order_service = OrderService(db)
-        order_dict = order_data.model_dump()
+        # Verificar que el cliente exista y esté activo
+        client: ClientModel | None = db.query(ClientModel).filter(
+            ClientModel.id_key == order_data.client_id,
+            ClientModel.is_active == True
+        ).first()
 
-        if not order_dict.get('order_details') or len(order_dict['order_details']) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="La orden debe tener al menos un producto"
-            )
-
-        order_result = order_service.create_simple_order(order_dict)
-
-        if not order_result.get('success'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=order_result.get('error', 'Error desconocido')
-            )
-
-        # Asegúrate de que el resultado incluya el estado
-        order_status = order_result.get('status', 1)  # Por defecto: 1 (Pendiente)
-
-        return {
-            "success": True,
-            "message": order_result.get('message', 'Orden creada'),
-            "order_id": order_result.get('order_id'),
-            "bill_id": order_result.get('bill_id'),
-            "client_id": current_user.id_key,
-            "total": order_dict.get('total', 0.0),
-            "status": order_status
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error creando orden para usuario {current_user.id_key}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno: {str(e)}"
-        )
-
-@router.put("/orders/{order_id}", response_model=OrderSchema)
-def update_order(
-    order_id: int,
-    order_data: OrderUpdateSchema,
-    current_user: ClientModel = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Actualizar una orden existente."""
-    try:
-        logger.info(f"Actualizando orden ID {order_id} por usuario {current_user.id_key}")
-        order_service = OrderService(db)
-        update_dict = order_data.model_dump(exclude_none=True)
-
-        # Verificar que la orden pertenece al usuario
-        existing_order = order_service.get_order_by_id(order_id)
-        if not existing_order or existing_order.client_id != current_user.id_key:
-            logger.warning(f"Intento de actualizar orden no perteneciente. Orden: {order_id}, Usuario: {current_user.id_key}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No puedes actualizar órdenes de otros usuarios"
-            )
-
-        order = order_service.update(order_id, update_dict)
-        return order
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error actualizando orden {order_id} por usuario {current_user.id_key}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error actualizando orden: {str(e)}"
-        )
-
-@router.get("/orders/active", response_model=Dict[str, Any])
-def get_active_orders(
-    current_user: ClientModel = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Obtener órdenes activas del usuario autenticado."""
-    try:
-        order_service = OrderService(db)
-        active_orders = order_service.get_active_orders_by_client(current_user.id_key)
-        return {
-            "active_orders": active_orders,
-            "count": len(active_orders)
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo órdenes activas para usuario {current_user.id_key}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-@router.get("/orders/{order_id}", response_model=OrderSchema)
-def get_order(
-    order_id: int,
-    current_user: ClientModel = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Obtener una orden específica del usuario autenticado."""
-    try:
-        logger.info(f"Buscando orden con id_key: {order_id} para usuario {current_user.id_key}")
-        order_service = OrderService(db)
-        order = order_service.get_order_by_id(order_id)
-
-        if not order:
+        if not client:
+            logger.warning(f"Cliente no encontrado o inactivo: {order_data.client_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Orden con ID {order_id} no encontrada"
+                detail="Cliente no encontrado o inactivo"
             )
 
-        if order.client_id != current_user.id_key:
-            logger.warning(f"Intento de acceder a orden no perteneciente. Orden: {order_id}, Usuario: {current_user.id_key}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No puedes acceder a órdenes de otros usuarios"
+        # Generar número de orden único
+        order_number: str = f"ORD-{uuid.uuid4().hex[:8].upper()}-{datetime.now().strftime('%Y%m%d')}"
+        order_dict: dict = order_data.model_dump(exclude={'order_details'})
+
+        # Crear orden
+        order: OrderModel = OrderModel(
+            **order_dict,
+            order_number=order_number,
+            date=datetime.now()
+        )
+
+        db.add(order)
+        db.flush()  # Para obtener el ID
+
+        # Crear detalles de orden y calcular total
+        total_calculated: float = 0
+        for detail in order_data.order_details:
+            # Verificar producto
+            product: ProductModel | None = db.query(ProductModel).filter(
+                ProductModel.id_key == detail.product_id
+            ).first()
+
+            if not product:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Producto no encontrado: {detail.product_id}"
+                )
+
+            # Usar precio del producto si no se especifica
+            price: float = detail.price if detail.price is not None else product.price
+
+            order_detail: OrderDetailModel = OrderDetailModel(
+                order_id=order.id_key,
+                product_id=detail.product_id,
+                quantity=detail.quantity,
+                price=price
             )
 
-        return order
+            db.add(order_detail)
+            total_calculated += price * detail.quantity
+
+        # Actualizar total si es diferente
+        if abs(total_calculated - order.total) > 0.01:
+            order.total = total_calculated
+
+        db.commit()
+        db.refresh(order)
+
+        logger.info(f"Orden creada exitosamente: {order_number} (ID: {order.id_key})")
+
+        return OrderResponseSchema(
+            id=order.id_key,
+            order_number=order.order_number,
+            client_id=order.client_id,
+            total=order.total,
+            delivery_method=order.delivery_method,
+            status=order.status,
+            address=order.address,
+            date=order.date,
+            created_at=order.created_at,
+            message="Orden creada exitosamente"
+        )
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error obteniendo orden {order_id} para usuario {current_user.id_key}: {e}", exc_info=True)
+        logger.error(f"Error creando orden: {str(e)}", exc_info=True)
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error del servidor: {str(e)}"
+            detail=f"Error interno del servidor: {str(e)}"
+        )
+
+@router.get("/orders/client/{client_id}", response_model=OrderListSchema)
+async def get_client_orders(
+    client_id: int,
+    current_user: ClientModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> OrderListSchema:
+    """
+    Obtener órdenes de un cliente específico.
+    Solo el propio cliente o un admin puede verlas.
+    """
+    try:
+        # Verificar permisos
+        if current_user.id_key != client_id and current_user.id_key != 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para ver estas órdenes"
+            )
+
+        orders: list[OrderModel] = db.query(OrderModel).filter(
+            OrderModel.client_id == client_id
+        ).order_by(OrderModel.created_at.desc()).all()
+
+        return {"orders": orders}
+
+    except Exception as e:
+        logger.error(f"Error obteniendo órdenes del cliente {client_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno del servidor: {str(e)}"
+        )
+
+@router.get("/orders", response_model=OrderListSchema)
+async def get_all_orders(
+    current_user: ClientModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> OrderListSchema:
+    """
+    Obtener todas las órdenes (solo admin).
+    """
+    try:
+        # Verificar si es admin (id_key = 0)
+        if current_user.id_key != 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo administradores pueden ver todas las órdenes"
+            )
+
+        orders: list[OrderModel] = db.query(OrderModel).order_by(OrderModel.created_at.desc()).all()
+        return {"orders": orders}
+
+    except Exception as e:
+        logger.error(f"Error obteniendo todas las órdenes: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno del servidor: {str(e)}"
         )

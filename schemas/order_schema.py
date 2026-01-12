@@ -71,3 +71,36 @@ class OrderSchema(OrderBaseSchema):
 
     class Config:
         from_attributes = True
+
+class OrderResponseSchema(BaseModel):
+    """Schema para respuesta de creación de orden"""
+    id: int
+    order_number: str
+    client_id: int
+    total: float
+    delivery_method: int
+    status: int
+    address: str | None
+    date: datetime
+    created_at: datetime
+    message: str = "Order created successfully"
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+
+class OrderListSchema(BaseModel):
+    """Schema para listar órdenes"""
+    id_key: int
+    order_number: str | None
+    client_id: int
+    total: float
+    status: int
+    date: datetime | None
+    address: str | None
+
+    class Config:
+        from_attributes = True
