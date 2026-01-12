@@ -29,18 +29,21 @@ def create_order(
             raise HTTPException(status_code=400, detail="La orden debe tener al menos un producto")
 
         order_result = order_service.create_simple_order(order_dict)
-        
+
         if not order_result.get('success'):
             raise HTTPException(status_code=400, detail=order_result.get('error', 'Error desconocido'))
-        
-        # Retornar respuesta compatible
+
+        # Asegúrate de que el resultado incluya el estado
+        order_status = order_result.get('status', 1)  # Por defecto: 1 (Pendiente)
+
         return {
             "success": True,
             "message": order_result.get('message', 'Orden creada'),
             "order_id": order_result.get('order_id'),
             "bill_id": order_result.get('bill_id'),
             "client_id": order_dict['client_id'],
-            "total": order_dict.get('total', 0.0)
+            "total": order_dict.get('total', 0.0),
+            "status": order_status  
         }
         
     except HTTPException:
