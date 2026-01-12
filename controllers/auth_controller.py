@@ -6,6 +6,7 @@ from schemas.client_schema import ClientLoginSchema, ClientRegisterSchema
 from models.client import ClientModel
 from services.auth_service import AuthService
 from jose import jwt
+from middleware.auth_middleware import get_current_user  
 import os
 import logging
 from datetime import datetime, timedelta
@@ -31,15 +32,15 @@ def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         client_id_str = payload.get("sub")
-        
+
         if client_id_str is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials"
             )
-        
+
         return int(client_id_str)
-        
+
     except jwt.JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -133,4 +134,14 @@ async def verify_token(
         "valid": True,
         "client_id": current_user_id_key,
         "message": "Token válido"
+    }
+
+@router.get("/me")
+async def get_me(current_user: ClientModel = Depends(get_current_user)):
+    """Obtener información del usuario actual"""
+    return {
+        "id": current_user.id_key,
+        "email": current_user.email,
+        "name": f"{current_user.name} {current_user.lastname}",
+        "is_admin": current_user.id_key == 0
     }
