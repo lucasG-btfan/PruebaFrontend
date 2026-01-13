@@ -51,6 +51,7 @@ def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(
 async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
     """Login endpoint - Permitir admin con id_key=0."""
     logger.info(f"Login attempt for email: {login_data.email}")
+    logger.debug(f"DEBUG - Password received (first 3 chars): {login_data.password.get_secret_value()[:3]}...")
 
     client = db.query(ClientModel).filter(
         ClientModel.email == login_data.email,
@@ -61,14 +62,35 @@ async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
         logger.warning(f"Client not found or inactive: {login_data.email}")
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
-    if not AuthService.verify_password(
+    logger.debug(f"DEBUG - Stored hash: {client.password_hash[:10]}...")
+    logger.debug(f"DEBUG - Stored salt: {client.password_salt[:10]}...")
+    logger.debug(f"DEBUG - Client ID: {client.id_key}")
+
+    # Verificar contraseña
+    is_valid = AuthService.verify_password(
         login_data.password.get_secret_value(),
         client.password_salt,
         client.password_hash
-    ):
+    )
+
+    logger.debug(f"DEBUG - Password valid: {is_valid}")
+
+    if not is_valid:
+        try:
+            test_hash = AuthService.hash_password(
+                login_data.password.get_secret_value(),
+                client.password_salt
+            )
+            logger.debug(f"DEBUG - Test hash: {test_hash[:10]}...")
+            logger.debug(f"DEBUG - Stored hash: {client.password_hash[:10]}...")
+            logger.debug(f"DEBUG - Hashes match: {test_hash == client.password_hash}")
+        except Exception as e:
+            logger.error(f"DEBUG - Error testing hash: {e}")
+
         logger.warning(f"Invalid password for: {login_data.email}")
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
+    # Crear token
     access_token = create_access_token(data={"sub": str(client.id_key)})
 
     logger.info(f"Login successful for: {login_data.email}")
@@ -80,6 +102,7 @@ async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
         "email": client.email,
         "name": f"{client.name} {client.lastname}"
     }
+
 
 @router.post("/register")
 async def register(register_data: ClientRegisterSchema, db: Session = Depends(get_db)):
