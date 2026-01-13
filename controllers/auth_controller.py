@@ -86,6 +86,7 @@ async def register(register_data: ClientRegisterSchema, db: Session = Depends(ge
     """Register endpoint - Solo para clientes normales (no admin)."""
     logger.info(f"Registration attempt for email: {register_data.email}")
 
+    # Verificar si el email ya existe
     existing = db.query(ClientModel).filter(
         ClientModel.email == register_data.email
     ).first()
@@ -94,36 +95,58 @@ async def register(register_data: ClientRegisterSchema, db: Session = Depends(ge
         logger.warning(f"Email already registered: {register_data.email}")
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # Verificar que las contraseñas coincidan
     if register_data.password.get_secret_value() != register_data.confirm_password.get_secret_value():
         logger.warning(f"Passwords don't match for: {register_data.email}")
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
-    if register_data.id_key == 0:
-        raise HTTPException(status_code=403, detail="Forbidden: Cannot register admin user")
-
+    # Generar salt y hash de contraseña
     salt = AuthService.generate_salt()
     password_hash = AuthService.hash_password(
         register_data.password.get_secret_value(),
         salt
     )
 
-    client_data = register_data.dict(exclude={'password', 'confirm_password'})
+    # Crear cliente - convertir schema a dict y excluir campos
+    client_data = register_data.dict(exclude={'password', 'confirm_password', 'id_key'})
+    
+    # Asegurar que no se asigne id_key=0 (solo admin)
+    if 'id_key' in client_data and client_data['id_key'] == 0:
+        client_data.pop('id_key')
+    
     client = ClientModel(
         **client_data,
         password_hash=password_hash,
-        password_salt=salt
+        password_salt=salt,
+        is_active=True  # Asegurar que esté activo
     )
 
     db.add(client)
-    db.commit()
-    db.refresh(client)
-
-    logger.info(f"Registration successful for: {register_data.email}, ID: {client.id_key}")
-    return {
-        "message": "Registration successful",
-        "client_id": client.id_key,
-        "email": client.email
-    }
+    
+    try:
+        db.commit()
+        db.refresh(client)
+        
+        logger.info(f"Registration successful for: {register_data.email}, ID: {client.id_key}")
+        
+        # Crear token para el nuevo usuario
+        access_token = create_access_token(data={"sub": str(client.id_key)})
+        
+        return {
+            "message": "Registration successful",
+            "client_id": client.id_key,
+            "email": client.email,
+            "name": f"{client.name} {client.lastname}",
+            "access_token": access_token  
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error during registration: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno del servidor: {str(e)}"
+        )
 
 @router.get("/verify")
 async def verify_token(

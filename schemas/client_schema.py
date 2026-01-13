@@ -63,11 +63,17 @@ class ClientLoginSchema(BaseModel):
     email: EmailStr
     password: SecretStr
 
-class ClientRegisterSchema(ClientCreateSchema):
-    """Schema for client registration."""
+class ClientRegisterSchema(BaseModel):
+    email: EmailStr
     password: SecretStr
     confirm_password: SecretStr
-
+    name: str = Field(..., min_length=2, max_length=50)
+    lastname: str = Field(..., min_length=2, max_length=50)
+    phone: str = Field(None, max_length=20)
+    id_key: int = None  
+    
+    class Config:
+        from_attributes = True
 class ClientWithPasswordSchema(ClientSchema):
     """Client schema with password (for internal use only)."""
     password_hash: Optional[str] = None
