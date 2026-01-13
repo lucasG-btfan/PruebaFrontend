@@ -74,7 +74,14 @@ class ClientRegisterSchema(BaseModel):
     
     class Config:
         from_attributes = True
+
 class ClientWithPasswordSchema(ClientSchema):
     """Client schema with password (for internal use only)."""
     password_hash: Optional[str] = None
     password_salt: Optional[str] = None
+
+from pydantic import BaseModel
+
+class DebugPasswordSchema(BaseModel):
+    email: str
+    password: str

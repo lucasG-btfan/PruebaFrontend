@@ -2,14 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from config.database import get_db
-from schemas.client_schema import ClientLoginSchema, ClientRegisterSchema
+from schemas.client_schema import ClientLoginSchema, ClientRegisterSchema, DebugPasswordSchema
 from models.client import ClientModel
 from services.auth_service import AuthService
 from jose import jwt
-from middleware.auth_middleware import get_current_user  
+from middleware.auth_middleware import get_current_user
 import os
 import logging
+import hashlib  
+import base64   
 from datetime import datetime, timedelta
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Authentication"])
@@ -152,7 +155,6 @@ async def register(register_data: ClientRegisterSchema, db: Session = Depends(ge
         
         logger.info(f"Registration successful for: {register_data.email}, ID: {client.id_key}")
         
-        # Crear token para el nuevo usuario
         access_token = create_access_token(data={"sub": str(client.id_key)})
         
         return {
@@ -191,3 +193,66 @@ async def get_me(current_user: ClientModel = Depends(get_current_user)):
         "name": f"{current_user.name} {current_user.lastname}",
         "is_admin": current_user.id_key == 0
     }
+
+@router.post("/debug-password")
+async def debug_password(
+    debug_data: DebugPasswordSchema,
+    db: Session = Depends(get_db)
+):
+    """Endpoint de diagnóstico para contraseñas"""
+    client = db.query(ClientModel).filter(
+        ClientModel.email == debug_data.email
+    ).first()
+
+    if not client:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    results = {
+        "email": client.email,
+        "client_id": client.id_key,
+        "stored_salt": client.password_salt[:10] + "...",
+        "stored_hash": client.password_hash[:10] + "...",
+        "salt_length": len(client.password_salt),
+        "hash_length": len(client.password_hash),
+        "tests": {}
+    }
+
+    old_hash = hashlib.sha256((debug_data.password + client.password_salt).encode()).hexdigest()
+    results["tests"]["old_method"] = {
+        "calculated": old_hash[:20] + "...",
+        "stored": client.password_hash[:20] + "...",
+        "matches": old_hash == client.password_hash
+    }
+
+    try:
+        salt_bytes = base64.b64decode(client.password_salt)
+        pbkdf2_hash = hashlib.pbkdf2_hmac(
+            'sha256',
+            debug_data.password.encode('utf-8'),
+            salt_bytes,
+            100000,
+            dklen=32
+        ).hex()
+
+        results["tests"]["pbkdf2_method"] = {
+            "calculated": pbkdf2_hash[:20] + "...",
+            "stored": client.password_hash[:20] + "...",
+            "matches": pbkdf2_hash == client.password_hash,
+            "iterations": 100000
+        }
+    except Exception as e:
+        results["tests"]["pbkdf2_method"] = {
+            "error": str(e)
+        }
+
+    try:
+        is_valid = AuthService.verify_password(debug_data.password, client.password_salt, client.password_hash)
+        results["tests"]["auth_service"] = {
+            "is_valid": is_valid
+        }
+    except Exception as e:
+        results["tests"]["auth_service"] = {
+            "error": str(e)
+        }
+
+    return results
