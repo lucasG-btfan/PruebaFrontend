@@ -1,4 +1,3 @@
-"""OrderDetail service with foreign key validation and stock management."""
 import logging
 from sqlalchemy.orm import Session
 
@@ -48,15 +47,12 @@ class OrderDetailService(BaseServiceImpl):
         """
         from sqlalchemy import select
 
-        # Validate order exists
         try:
             self._order_repository.find(schema.order_id)
         except InstanceNotFoundError:
             logger.error(f"Order with id {schema.order_id} not found")
             raise InstanceNotFoundError(f"Order with id {schema.order_id} not found")
 
-        # Use pessimistic locking to prevent race conditions
-        # SELECT FOR UPDATE locks the row until transaction completes
         try:
             stmt = select(ProductModel).where(
                 ProductModel.id_key == schema.product_id
@@ -79,20 +75,11 @@ class OrderDetailService(BaseServiceImpl):
                     f"Requested: {schema.quantity}, Available: {product_model.stock}"
                 )
 
-            # Set price from product if not provided
             if schema.price is None:
                 schema.price = product_model.price
-                logger.info(f"Using product price: {product_model.price}")
-
-            # Validate price matches product price (prevent price manipulation)
-            if abs(schema.price - product_model.price) > 0.01:
-                logger.warning(
-                    f"Price mismatch for product {schema.product_id}: "
-                    f"schema={schema.price}, product={product_model.price}"
-                )
-                raise ValueError(
-                    f"Price mismatch. Expected {product_model.price}, got {schema.price}"
-                )
+            elif abs(schema.price - product_model.price) > 0.01:
+                logger.warning(f"Price mismatch: sent {schema.price}, product {product_model.price}")
+                schema.price = product_model.price
 
             # Atomically deduct stock and create order detail in same transaction
             product_model.stock -= schema.quantity
@@ -105,8 +92,6 @@ class OrderDetailService(BaseServiceImpl):
             logger.info(f"Creating order detail for order {schema.order_id}")
             result = super().save(schema)
 
-            # Both operations commit together automatically
-            # If either fails, both rollback
             logger.info(
                 f"Order detail created successfully with atomic stock update"
             )
@@ -216,7 +201,6 @@ class OrderDetailService(BaseServiceImpl):
         """
         from sqlalchemy import select
 
-        # Get order detail to restore stock
         order_detail = self._repository.find(id_key)
 
         # 🔒 Use SELECT FOR UPDATE to lock the product row before restoring stock
@@ -233,7 +217,7 @@ class OrderDetailService(BaseServiceImpl):
                     f"Product with id {order_detail.product_id} not found"
                 )
 
-            # Restore stock atomically (same transaction with lock)
+            # Restore stock atomically 
             product_model.stock += order_detail.quantity
 
             logger.info(
@@ -241,12 +225,9 @@ class OrderDetailService(BaseServiceImpl):
                 f"restored {order_detail.quantity}, new stock = {product_model.stock}"
             )
 
-            # Delete order detail (same transaction)
+            # Delete order detail 
             logger.info(f"Deleting order detail {id_key}")
             super().delete(id_key)
-
-            # Both operations commit together automatically
-            # If either fails, both rollback
 
         except InstanceNotFoundError:
             raise

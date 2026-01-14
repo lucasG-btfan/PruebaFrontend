@@ -68,7 +68,6 @@ class OrderSchema(OrderBaseSchema):
 
 class OrderResponseSchema(BaseModel):
     id_key: int
-    order_number: str
     client_id_key: int
     total: float
     delivery_method: DeliveryMethod
@@ -86,7 +85,6 @@ class OrderResponseSchema(BaseModel):
 
 class OrderListSchema(BaseModel):
     id_key: int
-    order_number: str
     client_id_key: int
     total: float
     status: Status
