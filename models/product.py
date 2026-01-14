@@ -1,3 +1,4 @@
+from __future__ import annotations  
 from sqlalchemy import Column, String, Float, Text, Integer, ForeignKey, CheckConstraint, DateTime, func
 from sqlalchemy.orm import relationship
 from models.base_model import BaseModel
@@ -16,7 +17,7 @@ class ProductModel(BaseModel):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relaciones
+    # Relaciones usando strings para evitar importaciones circulares
     category = relationship('CategoryModel', back_populates='products', lazy='select')
     reviews = relationship('ReviewModel', back_populates='product', cascade='all, delete-orphan', lazy='select')
     order_details = relationship('OrderDetailModel', back_populates='product', cascade='all, delete-orphan', lazy='select')

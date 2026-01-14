@@ -18,7 +18,6 @@ class OrderDetailBase(BaseModel):
     class Config:
         from_attributes = True
 
-
 class OrderDetailCreateSchema(BaseModel):
     order_id: int = Field(..., gt=0)
     product_id: int = Field(..., gt=0)
@@ -27,8 +26,7 @@ class OrderDetailCreateSchema(BaseModel):
 
     class Config:
         from_attributes = True
-        extra = 'ignore' 
-
+        extra = 'ignore'
 
 class OrderDetailUpdateSchema(BaseModel):
     """Schema for updating OrderDetail."""

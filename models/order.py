@@ -16,7 +16,6 @@ class OrderModel(BaseModel):
 
     id_key = Column(Integer, primary_key=True, index=True, nullable=False)
 
-    # Campos de orden
     date = Column(DateTime, index=True, default=func.now())
     total = Column(Float, nullable=False)
     delivery_method = Column(SQLAlchemyEnum(DeliveryMethod), nullable=False)
@@ -39,7 +38,14 @@ class OrderModel(BaseModel):
 
     # Relación con ClientModel
     client = relationship("ClientModel", back_populates="orders", foreign_keys=[client_id_key])
-    details = relationship("OrderDetailModel", back_populates="order", lazy="select", cascade="all, delete-orphan")
+    
+    details = relationship(
+        "OrderDetailModel", 
+        back_populates="order", 
+        lazy="select", 
+        cascade="all, delete-orphan",
+        foreign_keys="[OrderDetailModel.order_id]"
+    )
 
     def __init__(self, **kwargs):
         name_mapping = {
@@ -55,6 +61,9 @@ class OrderModel(BaseModel):
                 new_kwargs[new_key] = value
             else:
                 new_kwargs[key] = value
+        
+        if 'order_number' in new_kwargs:
+            del new_kwargs['order_number']
         
         super().__init__(**new_kwargs)
 
