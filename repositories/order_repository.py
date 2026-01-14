@@ -9,16 +9,16 @@ class OrderRepository(BaseRepositoryImpl):
 
     def __init__(self, db: Session):
         super().__init__(OrderModel, OrderSchema, db)
-    
+
     def get_orders_by_client(self, client_id_key: int):
-        return self.db.query(OrderModel).filter(
+        return self.session.query(OrderModel).filter(  
             OrderModel.client_id_key == client_id_key
         ).all()
 
     def find(self, id_key: int):
         """Find order by ID."""
-        return self.db.query(self.model).filter(self.model.id_key == id_key).first()
+        return self.session.query(self.model).filter(self.model.id_key == id_key).first()  
 
     def find_all(self, skip: int = 0, limit: int = 100):
         """Find all orders."""
-        return self.db.query(self.model).offset(skip).limit(limit).all()
+        return self.session.query(self.model).offset(skip).limit(limit).all()  
