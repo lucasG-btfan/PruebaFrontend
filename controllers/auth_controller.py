@@ -9,12 +9,13 @@ from jose import jwt
 from middleware.auth_middleware import get_current_user
 import os
 import logging
+import hashlib  
+import base64   
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["Authentication"], prefix="/auth")
+router = APIRouter(tags=["Authentication"])  
 
-# Configuración JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -95,18 +96,15 @@ async def register(register_data: ClientRegisterSchema, db: Session = Depends(ge
     """Endpoint para registrar un nuevo cliente."""
     logger.info(f"Intento de registro para: {register_data.email}")
 
-    # Verificar si el email ya existe
     existing = db.query(ClientModel).filter(ClientModel.email == register_data.email).first()
     if existing:
         logger.warning(f"Email ya registrado: {register_data.email}")
         raise HTTPException(status_code=400, detail="El email ya está registrado")
 
-    # Verificar que las contraseñas coincidan
     if register_data.password.get_secret_value() != register_data.confirm_password.get_secret_value():
         logger.warning(f"Las contraseñas no coinciden para: {register_data.email}")
         raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
 
-    # Generar salt y hash de contraseña
     salt = AuthService.generate_salt()
     password_hash = AuthService.hash_password(
         register_data.password.get_secret_value(),
@@ -182,7 +180,6 @@ async def debug_password(debug_data: DebugPasswordSchema, db: Session = Depends(
         "tests": {}
     }
 
-    # Prueba con el método antiguo
     old_hash = hashlib.sha256((debug_data.password + client.password_salt).encode()).hexdigest()
     results["tests"]["old_method"] = {
         "calculated": old_hash[:20] + "...",
@@ -190,10 +187,7 @@ async def debug_password(debug_data: DebugPasswordSchema, db: Session = Depends(
         "matches": old_hash == client.password_hash
     }
 
-    # Prueba con PBKDF2
     try:
-        import base64
-        import hashlib
         salt_bytes = base64.b64decode(client.password_salt)
         pbkdf2_hash = hashlib.pbkdf2_hmac(
             'sha256',
@@ -211,7 +205,6 @@ async def debug_password(debug_data: DebugPasswordSchema, db: Session = Depends(
     except Exception as e:
         results["tests"]["pbkdf2_method"] = {"error": str(e)}
 
-    # Prueba con AuthService
     try:
         is_valid = AuthService.verify_password(debug_data.password, client.password_salt, client.password_hash)
         results["tests"]["auth_service"] = {"is_valid": is_valid}
