@@ -6,18 +6,27 @@ from services.review_service import ReviewService
 from services.auth_service import AuthService
 from repositories.review_repository import ReviewRepository
 from repositories.order_repository import OrderRepository
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 router = APIRouter()
+security = HTTPBearer()
 
 def get_review_service(db: Session = Depends(get_db)):
     review_repo = ReviewRepository(db)
     order_repo = OrderRepository(db)
     return ReviewService(review_repo, order_repo)
 
+def get_current_client(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Wrapper para obtener el cliente actual"""
+    return AuthService.get_current_client(credentials, db)
+
 @router.post("/reviews", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
 def create_review(
     review_data: ReviewCreate,
-    current_client: dict = Depends(AuthService.get_current_client),
+    current_client: dict = Depends(get_current_client),
     review_service: ReviewService = Depends(get_review_service)
 ):
     """Crear una nueva review para un producto comprado"""
@@ -39,7 +48,7 @@ def get_product_reviews(
 @router.get("/reviews/order/{order_id}")
 def get_order_reviews(
     order_id: int,
-    current_client: dict = Depends(AuthService.get_current_client),
+    current_client: dict = Depends(get_current_client),
     db: Session = Depends(get_db)
 ):
     """Obtener reviews de una orden específica"""
@@ -54,7 +63,7 @@ def get_order_reviews(
 
 @router.get("/reviews/me")
 def get_my_reviews(
-    current_client: dict = Depends(AuthService.get_current_client),
+    current_client: dict = Depends(get_current_client),
     review_service: ReviewService = Depends(get_review_service)
 ):
     """Obtener todas las reviews del cliente actual"""
@@ -63,7 +72,7 @@ def get_my_reviews(
 @router.get("/reviews/{review_id}", response_model=ReviewResponse)
 def get_review(
     review_id: int,
-    current_client: dict = Depends(AuthService.get_current_client),
+    current_client: dict = Depends(get_current_client),
     review_service: ReviewService = Depends(get_review_service)
 ):
     """Obtener una review específica"""
@@ -73,7 +82,7 @@ def get_review(
 def update_review(
     review_id: int,
     update_data: ReviewUpdate,
-    current_client: dict = Depends(AuthService.get_current_client),
+    current_client: dict = Depends(get_current_client),
     review_service: ReviewService = Depends(get_review_service)
 ):
     """Actualizar una review existente"""
@@ -82,7 +91,7 @@ def update_review(
 @router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_review(
     review_id: int,
-    current_client: dict = Depends(AuthService.get_current_client),
+    current_client: dict = Depends(get_current_client),
     review_service: ReviewService = Depends(get_review_service)
 ):
     """Eliminar una review"""

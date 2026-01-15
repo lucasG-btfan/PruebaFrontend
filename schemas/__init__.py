@@ -57,10 +57,11 @@ from schemas.category_schema import (
 
 # Review schemas
 from schemas.review_schema import (
-    ReviewSchema,
-    ReviewCreateSchema,
-    ReviewUpdateSchema,
-    ReviewBaseSchema
+    ReviewBase,
+    ReviewCreate,
+    ReviewUpdate,
+    ReviewResponse,
+    ProductReviewResponse
 )
 
 __all__ = [
@@ -99,8 +100,9 @@ __all__ = [
     'CategoryUpdateSchema',
     'CategoryBaseSchema',
     # Review
-    'ReviewSchema',
-    'ReviewCreateSchema',
-    'ReviewUpdateSchema',
-    'ReviewBaseSchema',
+    'ReviewBase',
+    'ReviewCreate',
+    'ReviewUpdate',
+    'ReviewResponse',
+    'ProductReviewResponse',
 ]
