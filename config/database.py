@@ -5,7 +5,6 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde .env
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -48,7 +47,6 @@ def get_db():
         db.close()
 
 def initialize_models():
-    """Importar todos los modelos para registrarlos con Base."""
     try:
         from models import (
             ClientModel, BillModel, OrderModel, OrderDetailModel,
@@ -56,10 +54,13 @@ def initialize_models():
         )
         logger.info("✅ Modelos importados correctamente")
 
-        # Verificar que los modelos están registrados
         if hasattr(Base, 'registry') and hasattr(Base.registry, '_class_registry'):
             registered_classes = list(Base.registry._class_registry.keys())
             logger.info(f"📦 Clases registradas con Base: {registered_classes}")
+
+            if 'ReviewModel' not in registered_classes:
+                logger.error("❌ ReviewModel NO está registrado en Base.registry")
+                return False
 
         return True
     except Exception as e:
@@ -67,6 +68,7 @@ def initialize_models():
         import traceback
         logger.error(traceback.format_exc())
         return False
+
 
 def create_tables():
     """Crear todas las tablas de la base de datos."""

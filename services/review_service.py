@@ -4,6 +4,10 @@ from schemas.review_schema import ReviewCreate, ReviewUpdate
 from models.review import ReviewModel
 from typing import List, Optional
 from fastapi import HTTPException, status
+from typing import List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.review import ReviewModel
 
 class ReviewService:
     def __init__(self, review_repo: ReviewRepository, order_repo: OrderRepository):
@@ -137,13 +141,11 @@ class ReviewService:
     
     def _get_rating_distribution(self, product_id: int) -> dict:
         from sqlalchemy import func
-        from models.review import Review
-        
+        from models.review import ReviewModel
         distribution = self.review_repo.session.query(
-            Review.rating,
-            func.count(Review.id_key)
+            ReviewModel.rating,
+            func.count(ReviewModel.id_key)
         ).filter(
-            Review.product_id == product_id
-        ).group_by(Review.rating).all()
-        
+            ReviewModel.product_id == product_id
+        ).group_by(ReviewModel.rating).all()
         return {str(rating): count for rating, count in distribution}

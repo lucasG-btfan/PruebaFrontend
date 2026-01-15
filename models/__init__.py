@@ -9,19 +9,22 @@ logger = logging.getLogger(__name__)
 # Importar la base compartida
 from .base_model import Base, BaseModel
 
-# Importar todos los modelos para que se registren con Base
+
 try:
+    # Importar modelos en orden jerárquico
+    
+    from .category import CategoryModel
     from .client import ClientModel
-    from .bill import BillModel
+    from .product import ProductModel
     from .order import OrderModel
     from .order_detail import OrderDetailModel
-    from .product import ProductModel
-    from .category import CategoryModel
+    from .bill import BillModel
     from .address import AddressModel
+
     from .review import ReviewModel
-    
+
     logger.info("📦 All models imported successfully")
-    
+
 except ImportError as e:
     logger.error(f"❌ Failed to import models: {e}")
     raise
@@ -30,12 +33,12 @@ except ImportError as e:
 __all__ = [
     'Base',
     'BaseModel',
+    'CategoryModel',
     'ClientModel',
-    'BillModel',  
+    'ProductModel',
     'OrderModel',
     'OrderDetailModel',
-    'ProductModel',
-    'CategoryModel',
+    'BillModel',
     'AddressModel',
     'ReviewModel'
 ]
