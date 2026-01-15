@@ -1,24 +1,28 @@
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, CheckConstraint
+from __future__ import annotations
+
+from sqlalchemy import Column, Integer, Float, Text, DateTime, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
-from models.base_model import BaseModel
+from sqlalchemy.sql import func
+from config.database import Base
 
-class ReviewModel(BaseModel):
-    __tablename__ = 'reviews'
+class ReviewModel(Base):
+    __tablename__ = "reviews"
 
+    id_key = Column(Integer, primary_key=True, index=True)
+    rating = Column(Float, nullable=False)
+    comment = Column(Text, nullable=True)
+    product_id = Column(Integer, ForeignKey("products.id_key"), nullable=False)
+    client_id = Column(Integer, ForeignKey("clients.id_key"), nullable=False)
+    order_id = Column(Integer, ForeignKey("orders.id_key"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Constraints
     __table_args__ = (
-        CheckConstraint('rating >= 1.0 AND rating <= 5.0', name='check_rating_range'),
+        CheckConstraint('rating >= 1 AND rating <= 5', name='check_rating_range'),
     )
 
-    id_key = Column(Integer, primary_key=True, index=True, autoincrement=True, nullable=False)
-    rating = Column(Float, nullable=False)
-    comment = Column(String)
-    product_id = Column(Integer, ForeignKey('products.id_key'), index=True)
-
-    # Relación
-    product = relationship('ProductModel', back_populates='reviews', lazy='select')
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def __repr__(self):
-        return f"<Review(id_key={self.id_key}, rating={self.rating})>"
+    # Relaciones
+    product = relationship("Product", back_populates="reviews")
+    client = relationship("Client")
+    order = relationship("Order")

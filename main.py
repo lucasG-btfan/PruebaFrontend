@@ -162,6 +162,7 @@ try:
     from controllers.auth_controller import router as auth_router
     from controllers.address_controller import router as address_router
     from controllers.bill_controller import router as bill_router
+    from controllers.review_controller import router as review_router
     
     logger.info("✓ Routers importados correctamente")
     
@@ -172,6 +173,7 @@ try:
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
     app.include_router(address_router, prefix="/api/v1", tags=["Addresses"])
     app.include_router(bill_router, prefix="/api/v1", tags=["Bills"])
+    app.include_router(review_router, prefix="/api/v1", tags=["Reviews"])
 
     logger.info("✓ Routers registrados correctamente")
     

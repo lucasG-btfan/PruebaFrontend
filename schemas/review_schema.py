@@ -1,41 +1,33 @@
 from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import datetime
-from pydantic import Field, BaseModel
 
+class ReviewBase(BaseModel):
+    rating: float = Field(..., ge=1, le=5, description="Rating entre 1 y 5 estrellas")
+    comment: Optional[str] = None
+    product_id: int
+    order_id: int
 
-class ReviewBaseSchema(BaseModel):
-    """Base schema for Review."""
-    
-    rating: float = Field(..., ge=1.0, le=5.0)
-    comment: str | None = Field(None, min_length=10, max_length=1000)
-    product_id: int = Field(...)
-    
-    class Config:
-        from_attributes = True
-
-
-class ReviewCreateSchema(ReviewBaseSchema):
-    """Schema for creating Review."""
+class ReviewCreate(ReviewBase):
     pass
 
+class ReviewUpdate(BaseModel):
+    rating: Optional[float] = Field(None, ge=1, le=5)
+    comment: Optional[str] = None
 
-class ReviewUpdateSchema(BaseModel):
-    """Schema for updating Review."""
-    
-    rating: float | None = Field(None, ge=1.0, le=5.0)
-    comment: str | None = Field(None, min_length=10, max_length=1000)
-    product_id: int | None = Field(None)
-    
-    class Config:
-        from_attributes = True
-
-
-class ReviewSchema(ReviewBaseSchema):
-    """Full Review schema WITHOUT circular references."""
-    
+class ReviewResponse(ReviewBase):
     id_key: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None  
-    
+    client_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
+
+class ProductReviewResponse(BaseModel):
+    id_key: int
+    rating: float
+    comment: Optional[str]
+    client_name: str
+    created_at: datetime
