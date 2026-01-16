@@ -1,9 +1,10 @@
 import os
 import logging
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
+from models.base_model import Base  
 
 load_dotenv()
 
@@ -21,16 +22,14 @@ logger.info(f"🔗 Conectando a la base de datos: {database_url[:50]}...")
 
 engine = create_engine(
     database_url,
-    echo=False,  
-    poolclass=NullPool,  
-    pool_pre_ping=True,  
+    echo=False,
+    poolclass=NullPool,
+    pool_pre_ping=True,
     connect_args={
-        "sslmode": "require",  
-        "connect_timeout": 10,  
+        "sslmode": "require",
+        "connect_timeout": 10,
     }
 )
-
-Base = declarative_base()
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -68,7 +67,6 @@ def initialize_models():
         import traceback
         logger.error(traceback.format_exc())
         return False
-
 
 def create_tables():
     """Crear todas las tablas de la base de datos."""
