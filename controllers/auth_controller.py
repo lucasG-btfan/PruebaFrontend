@@ -54,6 +54,7 @@ def get_current_user_id_key(credentials: HTTPAuthorizationCredentials = Depends(
 async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
     """Endpoint para iniciar sesión."""
     logger.info(f"Intento de inicio de sesión para: {login_data.email}")
+    logger.info(f"Contraseña recibida: {login_data.password.get_secret_value()[:5]}...")  # Solo para depuración
 
     client = db.query(ClientModel).filter(
         ClientModel.email == login_data.email,
@@ -65,6 +66,9 @@ async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
     # Verificar contraseña
+    logger.info(f"Salt del cliente: {client.password_salt[:10]}...")
+    logger.info(f"Hash almacenado: {client.password_hash[:10]}...")
+
     is_valid = AuthService.verify_password(
         login_data.password.get_secret_value(),
         client.password_salt,
@@ -90,6 +94,7 @@ async def login(login_data: ClientLoginSchema, db: Session = Depends(get_db)):
             "is_admin": client.id_key == 0
         }
     }
+
 
 @router.post("/register", summary="Registrar cliente", response_description="Retorna el token de acceso y datos del nuevo cliente")
 async def register(register_data: ClientRegisterSchema, db: Session = Depends(get_db)):
