@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 
 logging.basicConfig(
-    level=logging.INFO,  
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
@@ -17,17 +17,17 @@ logger.info("=" * 60)
 
 try:
     from schemas.model_setup import rebuild_models, verify_schemas
-    
+
     logger.info("Verificando schemas...")
     if verify_schemas():
         logger.info("✓ Schemas verificados correctamente")
-    
+
     logger.info("Reconstruyendo modelos...")
     if rebuild_models():
         logger.info("✓ Modelos reconstruidos correctamente")
     else:
         logger.warning("⚠ Algunos modelos no se pudieron reconstruir")
-        
+
 except Exception as e:
     logger.error(f"✗ ERROR EN SCHEMAS: {e}", exc_info=True)
 
@@ -37,7 +37,6 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
-
 
 def get_cors_origins():
     """Get CORS origins from environment or use defaults"""
@@ -103,6 +102,24 @@ app.add_middleware(
     max_age=3600,
 )
 
+@app.get("/api/v1/debug/routes")
+async def debug_routes():
+    """Endpoint para debug de todas las rutas registradas"""
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "methods"):
+            routes.append({
+                "path": route.path,
+                "methods": list(route.methods),
+                "name": route.name if hasattr(route, "name") else "N/A"
+            })
+    return {"routes": routes}
+
+@app.get("/api/v1/docs/json")
+async def openapi_json():
+    """Ver el esquema OpenAPI completo"""
+    return app.openapi()
+
 @app.on_event("startup")
 async def startup_event():
     try:
@@ -111,14 +128,14 @@ async def startup_event():
 
         if check_connection():
             logger.info("✅ Database connection successful")
-            
+
             # Crear tablas
             logger.info("🔨 Creating database tables...")
             if create_tables():
                 logger.info("✅ Tables created successfully")
             else:
                 logger.error("❌ Failed to create tables")
-            
+
             initialize_models()
         else:
             logger.warning("⚠️ Database connection failed - running in degraded mode")
@@ -137,7 +154,6 @@ async def root():
         "health": "/health"
     }
 
-
 @app.get("/health")
 @app.get("/health_check")
 async def health_check():
@@ -147,7 +163,7 @@ async def health_check():
         db_status = "connected" if check_connection() else "disconnected"
     except Exception:
         db_status = "error"
-    
+
     return {
         "status": "healthy",
         "database": db_status
@@ -163,9 +179,9 @@ try:
     from controllers.address_controller import router as address_router
     from controllers.bill_controller import router as bill_router
     from controllers.review_controller import router as review_router
-    
+
     logger.info("✓ Routers importados correctamente")
-    
+
     # Registrar routers
     app.include_router(product_router, prefix="/api/v1", tags=["Products"])
     app.include_router(order_router, prefix="/api/v1", tags=["Orders"])
@@ -176,7 +192,7 @@ try:
     app.include_router(review_router, prefix="/api/v1", tags=["Reviews"])
 
     logger.info("✓ Routers registrados correctamente")
-    
+
 except Exception as e:
     logger.error(f"✗ Error importando/registrando routers: {e}", exc_info=True)
     raise
