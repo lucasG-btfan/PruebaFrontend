@@ -23,6 +23,6 @@ class ReviewModel(Base):
     )
 
     # Relaciones
-    product = relationship("Product", back_populates="reviews")
-    client = relationship("Client")
-    order = relationship("Order")
+    product = relationship("ProductModel", back_populates="reviews")
+    client = relationship("ClientModel", back_populates="reviews")
+    order = relationship("OrderModel")

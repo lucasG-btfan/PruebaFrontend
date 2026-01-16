@@ -56,5 +56,13 @@ class ClientModel(BaseModel):
         lazy="select"
     )
 
+    # Relación con ReviewModel
+    reviews = relationship(
+        "ReviewModel",
+        back_populates="client",
+        cascade="all, delete-orphan",
+        lazy="select"
+    )
+
     def __repr__(self):
         return f"<Client(id_key={self.id_key}, email='{self.email}')>"
