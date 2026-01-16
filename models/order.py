@@ -18,6 +18,7 @@ class OrderModel(BaseModel):
     delivery_method = Column(SQLAlchemyEnum(DeliveryMethod), nullable=False)
     status = Column(SQLAlchemyEnum(Status), nullable=False)
     address = Column(String, nullable=True)
+    delivered_date = Column(DateTime, nullable=True)
 
     # Claves foráneas
     client_id_key = Column(Integer, ForeignKey("clients.id_key"))

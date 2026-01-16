@@ -23,6 +23,15 @@ def get_current_client_simple(
     """Dependencia simple que solo verifica el token"""
     return AuthService.get_current_client_simple(credentials)
 
+@router.get("/reviews", response_model=List[ReviewResponse])  
+def get_all_reviews(
+    skip: int = 0,
+    limit: int = 100,
+    review_service: ReviewService = Depends(get_review_service)
+):
+    """Obtener todas las reviews"""
+    return review_service.get_all_reviews(skip, limit)
+
 @router.post("/reviews", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
 def create_review(
     review_data: ReviewCreate,

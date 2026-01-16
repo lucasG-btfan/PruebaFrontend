@@ -9,6 +9,7 @@ from models.order_detail import OrderDetailModel
 from models.product import ProductModel
 from models.client import ClientModel
 from models.bill import BillModel
+from models.enums import Status
 from services.order_detail_service import OrderDetailService  
 from middleware.auth_middleware import get_current_user
 import logging
@@ -305,6 +306,113 @@ async def get_order_details(
         raise
     except Exception as e:
         logger.error(f"Error obteniendo detalles de la orden {order_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno del servidor: {str(e)}"
+        )
+    
+@router.put("/orders/{order_id}/deliver")
+async def mark_order_as_delivered(
+    order_id: int,
+    current_user: ClientModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Marcar una orden como entregada (solo para admin)"""
+    try:
+        # Solo el admin puede marcar órdenes como entregadas
+        if current_user.id_key != 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo administradores pueden marcar órdenes como entregadas"
+            )
+
+        order: OrderModel | None = db.query(OrderModel).filter(
+            OrderModel.id_key == order_id
+        ).first()
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Orden no encontrada"
+            )
+
+        if order.status == Status.DELIVERED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La orden ya está marcada como entregada"
+            )
+
+        # Verificar que no esté cancelada
+        if order.status == Status.CANCELED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede marcar como entregada una orden cancelada"
+            )
+
+        order.status = Status.DELIVERED
+        order.delivered_date = datetime.now()
+        order.updated_at = datetime.now()
+
+        db.commit()
+        db.refresh(order)
+
+        logger.info(f"Orden {order_id} marcada como entregada")
+
+        return {
+            "success": True,
+            "message": f"Orden {order_id} marcada como entregada",
+            "order_id": order_id,
+            "status": "DELIVERED",
+            "delivered_date": order.delivered_date.isoformat()
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error marcando orden {order_id} como entregada: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno del servidor: {str(e)}"
+        )
+
+@router.get("/orders/{order_id}/status")
+async def get_order_status(
+    order_id: int,
+    current_user: ClientModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Obtener el estado de una orden"""
+    try:
+        order: OrderModel | None = db.query(OrderModel).filter(
+            OrderModel.id_key == order_id
+        ).first()
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Orden no encontrada"
+            )
+
+        # Verificar permisos
+        if current_user.id_key != order.client_id_key and current_user.id_key != 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para ver esta orden"
+            )
+
+        return {
+            "order_id": order.id_key,
+            "status": order.status.value,
+            "status_code": order.status.value if isinstance(order.status, int) else 0,
+            "status_display": order.status.name if hasattr(order.status, 'name') else str(order.status),
+            "delivered_date": order.delivered_date.isoformat() if order.delivered_date else None,
+            "can_review": order.status == Status.DELIVERED
+        }
+
+    except Exception as e:
+        logger.error(f"Error obteniendo estado de la orden {order_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error interno del servidor: {str(e)}"
