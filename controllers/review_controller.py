@@ -36,11 +36,19 @@ def get_all_reviews(
 def create_review(
     review_data: ReviewCreate,
     current_client: dict = Depends(get_current_client_simple),
-    review_service: ReviewService = Depends(get_review_service),
-    response: Response = None
+    review_service: ReviewService = Depends(get_review_service)
 ):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return review_service.create_review(review_data, current_client["id"])
+    print(f"🔍 Datos recibidos en /reviews: {review_data}")
+    print(f"🔍 Cliente autenticado: {current_client}")
+    try:
+        result = review_service.create_review(review_data, current_client["id"])
+        print(f"✅ Reseña creada exitosamente: {result}")
+        return result
+    except Exception as e:
+        print(f"❌ Error al crear la reseña: {str(e)}")
+        import traceback
+        traceback.print_exc()  
+        raise HTTPException(status_code=500, detail=f"Error al crear la reseña: {str(e)}")
 
 @router.get("/reviews/product/{product_id}", response_model=List[ReviewResponse])
 def get_reviews_by_product(
