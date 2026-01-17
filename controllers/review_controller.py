@@ -18,11 +18,10 @@ router = APIRouter()
 security = HTTPBearer()
 
 def get_review_service(db: Session = Depends(get_db)):
-    """Dependencia para obtener el servicio de reviews."""
     review_repo = ReviewRepository(db)
     order_repo = OrderRepository(db)
-    product_repo = ProductRepository(db)  
-    return ReviewService(review_repo, order_repo, product_repo)
+    product_repo = ProductRepository(db)
+    return ReviewService(review_repo, order_repo, product_repo, db)  
 
 def get_current_client_simple(
     credentials: HTTPAuthorizationCredentials = Depends(security)

@@ -35,6 +35,14 @@ class ReviewRepository:
         from models.review import ReviewModel
         return self.session.query(ReviewModel).filter(ReviewModel.client_id == client_id).all()
 
+    def get_by_client_product_order(self, client_id: int, product_id: int, order_id: int):
+        from models.review import ReviewModel
+        return self.session.query(ReviewModel).filter(
+            ReviewModel.client_id == client_id,
+            ReviewModel.product_id == product_id,
+            ReviewModel.order_id == order_id
+        ).first()
+
     def get_by_order(self, order_id: int) -> List[ReviewModel]:
         from models.review import ReviewModel
         return self.session.query(ReviewModel).filter(ReviewModel.order_id == order_id).all()
