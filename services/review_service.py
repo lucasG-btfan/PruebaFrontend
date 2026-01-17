@@ -14,48 +14,20 @@ class ReviewService:
         self.review_repo = review_repo
         self.order_repo = order_repo
     
-    def create_review(self, review_data: ReviewCreate, client_id: int) -> ReviewModel:
-        # Verificar que la orden existe y pertenece al cliente
+    def create_review(self, review_data: ReviewCreate, client_id: int):
+        product = self.product_repo.get_by_id(review_data.product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+
         order = self.order_repo.get_by_id(review_data.order_id)
-        if not order:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Orden no encontrada"
-            )
-        
-        # Verificar que el cliente es el dueño de la orden
-        if order.client_id != client_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes permiso para calificar esta orden"
-            )
-        
-        if order.status != 3:  
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Solo puedes calificar órdenes entregadas"
-            )
-        
-        # Verificar que el producto está en la orden
-        order_products = [detail.product_id for detail in order.order_details]
-        if review_data.product_id not in order_products:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Este producto no está en la orden"
-            )
-        
-        # Verificar si ya existe una review para este producto en esta orden
-        existing_review = self.review_repo.get_by_product_and_client(
-            review_data.product_id, client_id, review_data.order_id
-        )
-        
-        if existing_review:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya has calificado este producto en esta orden"
-            )
-        
-        # Crear la review
+        if not order or order.client_id != client_id:
+            raise HTTPException(status_code=403, detail="No tienes permiso para reseñar esta orden")
+
+        order_details = self.order_repo.get_order_details(review_data.order_id)
+        if review_data.product_id not in [detail.product_id for detail in order_details]:
+            raise HTTPException(status_code=400, detail="El producto no está en esta orden")
+
+        # Crear la reseña
         review = ReviewModel(
             rating=review_data.rating,
             comment=review_data.comment,
@@ -63,24 +35,12 @@ class ReviewService:
             client_id=client_id,
             order_id=review_data.order_id
         )
-        
         return self.review_repo.create(review)
-    
-    def get_review(self, review_id: int, client_id: int) -> ReviewModel:
+
+    def get_review(self, review_id: int):
         review = self.review_repo.get_by_id(review_id)
         if not review:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Review no encontrada"
-            )
-        
-        # Solo el cliente que creó la review o admin puede verla
-        if review.client_id != client_id and client_id != 0:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes permiso para ver esta review"
-            )
-        
+            raise HTTPException(status_code=404, detail="Reseña no encontrada")
         return review
     
     def get_product_reviews(self, product_id: int) -> List[ReviewModel]:

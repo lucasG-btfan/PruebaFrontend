@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from typing import List
 from config.database import get_db
@@ -36,9 +36,10 @@ def get_all_reviews(
 def create_review(
     review_data: ReviewCreate,
     current_client: dict = Depends(get_current_client_simple),
-    review_service: ReviewService = Depends(get_review_service)
+    review_service: ReviewService = Depends(get_review_service),
+    response: Response = None
 ):
-    """Crear una nueva review para un producto comprado"""
+    response.headers["Access-Control-Allow-Origin"] = "*"
     return review_service.create_review(review_data, current_client["id"])
 
 @router.get("/reviews/product/{product_id}", response_model=List[ReviewResponse])
@@ -84,11 +85,10 @@ def get_order_reviews(
 @router.get("/reviews/{review_id}", response_model=ReviewResponse)
 def get_review(
     review_id: int,
-    current_client: dict = Depends(get_current_client_simple),
     review_service: ReviewService = Depends(get_review_service)
 ):
-    """Obtener una review específica por ID"""
-    return review_service.get_review(review_id, current_client["id"])
+    return review_service.get_review(review_id)
+
 
 @router.put("/reviews/{review_id}", response_model=ReviewResponse)
 def update_review(
