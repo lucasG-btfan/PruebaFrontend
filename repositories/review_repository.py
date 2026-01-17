@@ -46,6 +46,15 @@ class ReviewRepository:
     def get_by_order(self, order_id: int) -> List[ReviewModel]:
         from models.review import ReviewModel
         return self.session.query(ReviewModel).filter(ReviewModel.order_id == order_id).all()
+    
+    # Añadir este método a la clase ReviewRepository
+    def get_by_order_and_client(self, order_id: int, client_id: int) -> List[ReviewModel]:
+        """Obtener reviews por orden y cliente."""
+        from models.review import ReviewModel
+        return self.session.query(ReviewModel).filter(
+            ReviewModel.order_id == order_id,
+            ReviewModel.client_id == client_id
+        ).all()
 
     def update(self, review_id: int, rating: Optional[float] = None, comment: Optional[str] = None) -> Optional[ReviewModel]:
         from models.review import ReviewModel
