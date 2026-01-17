@@ -377,6 +377,172 @@ async def mark_order_as_delivered(
             detail=f"Error interno del servidor: {str(e)}"
         )
 
+@router.get("/orders/{order_id}/can-cancel")
+async def can_cancel_order(
+    order_id: int,
+    current_user: ClientModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Verificar si una orden puede ser cancelada."""
+    try:
+        order: OrderModel | None = db.query(OrderModel).filter(
+            OrderModel.id_key == order_id
+        ).first()
+
+        if not order:
+            return {
+                "can_cancel": False,
+                "reason": "Orden no encontrada",
+                "order_id": order_id
+            }
+
+        is_admin = current_user.id_key == 0
+        is_owner = order.client_id_key == current_user.id_key
+        
+        if not (is_admin or is_owner):
+            return {
+                "can_cancel": False,
+                "reason": "No tienes permiso para cancelar esta orden",
+                "order_id": order_id
+            }
+
+        if order.status == Status.CANCELED:
+            return {
+                "can_cancel": False,
+                "reason": "La orden ya está cancelada",
+                "order_id": order_id
+            }
+
+        if order.status == Status.DELIVERED:
+            return {
+                "can_cancel": is_admin,  # Solo admin puede cancelar entregadas
+                "reason": "Orden ya entregada" if not is_admin else "Admin puede cancelar",
+                "order_id": order_id
+            }
+
+        # Verificar tiempo límite para clientes (30 minutos)
+        if not is_admin:
+            order_age = datetime.now() - order.date
+            if order_age.total_seconds() > 1800:
+                return {
+                    "can_cancel": False,
+                    "reason": "Tiempo para cancelar expirado (30 minutos)",
+                    "order_id": order_id
+                }
+
+        return {
+            "can_cancel": True,
+            "reason": "Orden puede ser cancelada",
+            "order_id": order_id,
+            "max_cancel_time": "30 minutos" if not is_admin else "Sin límite"
+        }
+
+    except Exception as e:
+        logger.error(f"Error verificando cancelación orden {order_id}: {str(e)}")
+        return {
+            "can_cancel": False,
+            "reason": f"Error interno: {str(e)}",
+            "order_id": order_id
+        }
+
+@router.put("/orders/{order_id}/cancel")
+async def cancel_order(
+    order_id: int,
+    current_user: ClientModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Cancelar una orden (admin o cliente dueño de la orden)."""
+    try:
+        order: OrderModel | None = db.query(OrderModel).filter(
+            OrderModel.id_key == order_id
+        ).first()
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Orden no encontrada"
+            )
+
+        is_admin = current_user.id_key == 0
+        is_owner = order.client_id_key == current_user.id_key
+        
+        if not (is_admin or is_owner):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para cancelar esta orden"
+            )
+        
+        if order.status == Status.CANCELED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La orden ya está cancelada"
+            )
+
+        if not is_admin:
+            if order.status == Status.DELIVERED:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No puedes cancelar una orden ya entregada"
+                )
+            
+            # el tiempo de limite es 30 min porque esto es un proyecto, se puede modificar
+            order_age = datetime.now() - order.date
+            if order_age.total_seconds() > 1800:   
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El tiempo para cancelar esta orden ha expirado (30 minutos)"
+                )
+
+        order_details = db.query(OrderDetailModel).filter(
+            OrderDetailModel.order_id == order_id
+        ).all()
+        
+        stock_restored_count = 0
+        try:
+            for detail in order_details:
+                product = db.query(ProductModel).filter(
+                    ProductModel.id_key == detail.product_id
+                ).first()
+                
+                if product and hasattr(product, 'stock'):
+                    product.stock += detail.quantity
+                    stock_restored_count += 1
+                    logger.info(f"✅ Stock restaurado: Producto {product.id_key} +{detail.quantity} unidades")
+        
+        except Exception as stock_error:
+            logger.warning(f"⚠️ Error restaurando stock: {stock_error}")
+
+        order.status = Status.CANCELED
+        order.updated_at = datetime.now()
+        
+        cancelled_by = "admin" if is_admin else "client"
+        logger.info(f"Orden {order_id} cancelada por {cancelled_by} ID: {current_user.id_key}")
+
+        db.commit()
+        db.refresh(order)
+
+        return {
+            "success": True,
+            "message": f"Orden {order_id} cancelada exitosamente",
+            "order_id": order_id,
+            "status": "CANCELED",
+            "cancelled_by": cancelled_by,
+            "cancelled_at": datetime.now().isoformat(),
+            "stock_restored": stock_restored_count,
+            "remaining_stock_issues": len(order_details) - stock_restored_count
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error cancelando orden {order_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno del servidor: {str(e)}"
+        )
+
 @router.get("/orders/{order_id}/status")
 async def get_order_status(
     order_id: int,
