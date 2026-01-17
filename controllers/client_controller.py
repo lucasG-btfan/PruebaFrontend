@@ -119,6 +119,29 @@ async def debug_auth(current_user_id_key: int = Depends(get_current_user_id_key)
         "message": "Auth debug funcionando correctamente"
     }
 
+@router.get("/me", response_model=ClientResponseSchema)
+async def get_my_profile(
+    current_user_id_key: int = Depends(get_current_user_id_key),
+    db: Session = Depends(get_db)
+):
+    """Obtener el perfil del usuario actual."""
+    logger.info(f"👤 [GET /clients/me] user={current_user_id_key}")
+
+    client = db.query(ClientModel).filter(
+        ClientModel.id_key == current_user_id_key,
+        ClientModel.is_active == True
+    ).first()
+
+    if not client:
+        logger.warning(f"❌ Cliente {current_user_id_key} no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Perfil no encontrado"
+        )
+
+    logger.info(f"✅ Perfil del usuario {current_user_id_key} encontrado")
+    return client
+
 @router.get("/search", response_model=ClientListResponseSchema)
 async def search_clients(
     q: str = Query(..., min_length=1, description="Término de búsqueda"),
