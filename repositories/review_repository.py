@@ -1,6 +1,7 @@
 from __future__ import annotations
 from sqlalchemy.orm import Session
 from typing import List, Optional, TYPE_CHECKING
+from datetime import datetime
 
 if TYPE_CHECKING:
     from models.review import ReviewModel
@@ -58,15 +59,19 @@ class ReviewRepository:
 
     def update(self, review_id: int, rating: Optional[float] = None, comment: Optional[str] = None) -> Optional[ReviewModel]:
         from models.review import ReviewModel
+        from datetime import datetime
+
         review = self.get_by_id(review_id)
         if review:
             if rating is not None:
                 review.rating = rating
             if comment is not None:
                 review.comment = comment
+            review.updated_at = datetime.now()  
             self.session.commit()
             self.session.refresh(review)
         return review
+
 
     def delete(self, review_id: int) -> bool:
         from models.review import ReviewModel

@@ -88,7 +88,8 @@ class ReviewService:
                 product_id=review_data.product_id,
                 client_id=client_id,
                 order_id=review_data.order_id,
-                date=datetime.now()
+                created_at=datetime.now(),
+                updated_at=datetime.now()
             )
             
             return self.review_repo.create(review)
