@@ -1,55 +1,117 @@
+# services/review_service.py
 from repositories.review_repository import ReviewRepository
 from repositories.order_repository import OrderRepository
+from repositories.product_repository import ProductRepository  # ¡NUEVO!
 from schemas.review_schema import ReviewCreate, ReviewUpdate
 from models.review import ReviewModel
+from models.order import OrderModel
+from models.enums import Status
 from typing import List, Optional
 from fastapi import HTTPException, status
-from typing import List, Optional, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from models.review import ReviewModel
+from datetime import datetime
 
 class ReviewService:
-    def __init__(self, review_repo: ReviewRepository, order_repo: OrderRepository):
+    def __init__(self, 
+                 review_repo: ReviewRepository, 
+                 order_repo: OrderRepository,
+                 product_repo: ProductRepository):  
         self.review_repo = review_repo
         self.order_repo = order_repo
+        self.product_repo = product_repo  
     
     def create_review(self, review_data: ReviewCreate, client_id: int):
-        product = self.product_repo.get_by_id(review_data.product_id)
-        if not product:
-            raise HTTPException(status_code=404, detail="Producto no encontrado")
-
-        order = self.order_repo.get_by_id(review_data.order_id)
-        if not order or order.client_id != client_id:
-            raise HTTPException(status_code=403, detail="No tienes permiso para reseñar esta orden")
-
-        order_details = self.order_repo.get_order_details(review_data.order_id)
-        if review_data.product_id not in [detail.product_id for detail in order_details]:
-            raise HTTPException(status_code=400, detail="El producto no está en esta orden")
-
-        # Crear la reseña
-        review = ReviewModel(
-            rating=review_data.rating,
-            comment=review_data.comment,
-            product_id=review_data.product_id,
-            client_id=client_id,
-            order_id=review_data.order_id
-        )
-        return self.review_repo.create(review)
-
+        """Crear una nueva reseña con validaciones."""
+        try:
+            product = self.product_repo.get_by_id(review_data.product_id)
+            if not product:
+                raise HTTPException(
+                    status_code=404, 
+                    detail="Producto no encontrado"
+                )
+            
+            order = self.order_repo.get_by_id(review_data.order_id)
+            if not order:
+                raise HTTPException(
+                    status_code=404, 
+                    detail="Orden no encontrada"
+                )
+            
+            if order.client_id_key != client_id:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="No tienes permiso para reseñar esta orden"
+                )
+            
+            if order.status != Status.DELIVERED:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Solo puedes calificar productos de órdenes entregadas"
+                )
+            
+            order_details = self.order_repo.get_order_details(review_data.order_id)
+            product_in_order = any(
+                detail.product_id == review_data.product_id 
+                for detail in order_details
+            )
+            
+            if not product_in_order:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="El producto no está en esta orden"
+                )
+            
+            existing_review = self.review_repo.get_by_client_product_order(
+                client_id=client_id,
+                product_id=review_data.product_id,
+                order_id=review_data.order_id
+            )
+            
+            if existing_review:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Ya has calificado este producto de esta orden"
+                )
+            
+            review = ReviewModel(
+                rating=review_data.rating,
+                comment=review_data.comment,
+                product_id=review_data.product_id,
+                client_id=client_id,
+                order_id=review_data.order_id,
+                date=datetime.now()
+            )
+            
+            return self.review_repo.create(review)
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al crear la reseña: {str(e)}"
+            )
+    
     def get_review(self, review_id: int):
+        """Obtener una reseña específica (público)."""
         review = self.review_repo.get_by_id(review_id)
         if not review:
             raise HTTPException(status_code=404, detail="Reseña no encontrada")
         return review
     
     def get_product_reviews(self, product_id: int) -> List[ReviewModel]:
+        """Obtener todas las reseñas de un producto (público)."""
         return self.review_repo.get_by_product(product_id)
     
+    def get_order_reviews(self, order_id: int) -> List[ReviewModel]:
+        """Obtener todas las reseñas de una orden."""
+        return self.review_repo.get_by_order(order_id)
+    
     def get_client_reviews(self, client_id: int) -> List[ReviewModel]:
+        """Obtener todas las reseñas de un cliente."""
         return self.review_repo.get_by_client(client_id)
     
     def update_review(self, review_id: int, update_data: ReviewUpdate, client_id: int) -> ReviewModel:
+        """Actualizar una reseña (solo el cliente que la creó)."""
         review = self.review_repo.get_by_id(review_id)
         
         if not review:
@@ -59,7 +121,7 @@ class ReviewService:
             )
         
         # Solo el cliente que creó la review puede actualizarla
-        if review.client_id != client_id and client_id != 0:
+        if review.client_id != client_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permiso para actualizar esta review"
@@ -72,6 +134,7 @@ class ReviewService:
         )
     
     def delete_review(self, review_id: int, client_id: int) -> bool:
+        """Eliminar una reseña (solo el cliente que la creó o admin)."""
         review = self.review_repo.get_by_id(review_id)
         
         if not review:
@@ -90,22 +153,27 @@ class ReviewService:
         return self.review_repo.delete(review_id)
     
     def get_product_rating_summary(self, product_id: int) -> dict:
+        """Obtener resumen de calificaciones de un producto (público)."""
         avg_rating = self.review_repo.get_product_average_rating(product_id)
         review_count = self.review_repo.get_product_review_count(product_id)
         
         return {
-            "average_rating": avg_rating,
-            "review_count": review_count,
+            "average_rating": avg_rating or 0,
+            "review_count": review_count or 0,
             "rating_distribution": self._get_rating_distribution(product_id)
         }
     
     def _get_rating_distribution(self, product_id: int) -> dict:
-        from sqlalchemy import func
-        from models.review import ReviewModel
-        distribution = self.review_repo.session.query(
-            ReviewModel.rating,
-            func.count(ReviewModel.id_key)
-        ).filter(
-            ReviewModel.product_id == product_id
-        ).group_by(ReviewModel.rating).all()
-        return {str(rating): count for rating, count in distribution}
+        """Obtener distribución de calificaciones (privado)."""
+        distribution = {}
+        reviews = self.review_repo.get_by_product(product_id)
+        
+        for i in range(1, 6):
+            count = sum(1 for review in reviews if review.rating == i)
+            distribution[str(i)] = count
+        
+        return distribution
+    
+    def get_reviews_by_order_and_client(self, order_id: int, client_id: int) -> List[ReviewModel]:
+        """Obtener reseñas de una orden específica para un cliente."""
+        return self.review_repo.get_by_order_and_client(order_id, client_id)
