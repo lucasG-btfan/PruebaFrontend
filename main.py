@@ -198,20 +198,48 @@ except Exception as e:
     raise
 
 logger.info("=" * 60)
-logger.info("✓ APLICACIÓN INICIADA CORRECTAMENTE")
+logger.info("VERIFICANDO RUTAS REGISTRADAS:")
 logger.info("=" * 60)
 
-logger.info("Rutas registradas en FastAPI:")
+# Contar rutas por router
+router_counts = {}
+all_routes = []
+
 for route in app.routes:
-    logger.info(f" - {route.path}")
+    if hasattr(route, "methods"):
+        path = route.path
+        methods = list(route.methods)
+        
+        # Filtrar rutas de reviews
+        if "/reviews" in path:
+            logger.info(f"✅ REVIEW ROUTE: {methods} {path}")
+        
+        all_routes.append({"path": path, "methods": methods})
+
+logger.info(f"Total de rutas registradas: {len(all_routes)}")
+
+# Verificar específicamente las rutas de reviews
+review_routes = [r for r in all_routes if "/reviews" in r["path"]]
+if review_routes:
+    logger.info(f"✓ Rutas de reviews encontradas: {len(review_routes)}")
+    for route in review_routes:
+        logger.info(f"  - {route['methods']} {route['path']}")
+else:
+    logger.error("✗ NO SE ENCONTRARON RUTAS DE REVIEWS!")
+    
+    # Debug adicional: verificar el router de reviews
+    logger.info("Debug del router de reviews:")
+    try:
+        for route in review_router.routes:
+            if hasattr(route, "methods"):
+                logger.info(f"  En router: {list(route.methods)} {route.path}")
+    except Exception as e:
+        logger.error(f"Error examinando router de reviews: {e}")
 
 from controllers.client_controller import router as client_router
 logger.info("Rutas en el router de clientes:")
 for route in client_router.routes:
     logger.info(f" - {route.path}")
-
-app.include_router(client_router, prefix="/api/v1", tags=["Clients"])
-
 
 # if __name__ == "__main__":
 #     import uvicorn
