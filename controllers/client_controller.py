@@ -377,21 +377,19 @@ async def delete_client(
     db: Session = Depends(get_db),
     current_user_id_key: int = Depends(get_current_user_id_key)
 ):
-    """Eliminar un cliente (soft delete)."""
+    """Eliminar un cliente (PERMANENT DELETE o SOFT DELETE)."""
     logger.info(f"🗑️ [DELETE] client_id={client_id}, user={current_user_id_key}")
 
     # Verificar permisos
-    if current_user_id_key != 0 and client_id != current_user_id_key:
+    if current_user_id_key != 0:
         logger.warning(f"❌ Usuario {current_user_id_key} intentó eliminar cliente {client_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para eliminar este perfil"
+            detail="Solo el administrador puede eliminar clientes"
         )
 
-    # Buscar cliente
     client = db.query(ClientModel).filter(
-        ClientModel.id_key == client_id,
-        ClientModel.is_active == True
+        ClientModel.id_key == client_id
     ).first()
 
     if not client:
@@ -402,10 +400,7 @@ async def delete_client(
         )
 
     try:
-        # Soft delete
-        client.is_active = False
-        client.deleted_at = func.now()
-
+        db.delete(client)
         db.commit()
 
         logger.info(f"✅ Cliente {client_id} eliminado exitosamente")
