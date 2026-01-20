@@ -3,46 +3,79 @@ Este proyecto consiste en un sistema completo de comercio electrónico desarroll
 🏗️ Arquitectura del Sistema
 
 Backend (FastAPI + PostgreSQL)
+
 text
+
 backend/
+
 ├── controllers/          # Controladores de endpoints REST
+
 ├── models/              # Modelos de base de datos SQLAlchemy
+
 ├── schemas/             # Esquemas de validación Pydantic
+
 ├── services/            # Lógica de negocio
+
 ├── repositories/        # Patrón Repository para acceso a datos
+
 ├── middleware/          # Middleware de autenticación y seguridad
+
 ├── config/              # Configuración de la aplicación
+
 └── main.py              # Punto de entrada de la aplicación
+
 Frontend (React + Vite)
+
 text
+
 frontend/
+
 ├── screen/              # Pantallas principales de la aplicación
+
 ├── components/          # Componentes reutilizables
+
 ├── context/             # Context API para estado global
+
 ├── hooks/               # Custom hooks
+
 ├── services/api/        # Servicios de comunicación con backend
+
 ├── styles/              # Archivos CSS/SCSS
+
 └── App.jsx              # Configuración de rutas principal
 
 🚀 Características Principales
 
 👤 Para Usuarios
+
 Autenticación y Registro: Sistema seguro de login con JWT
+
 Catálogo de Productos: Navegación con filtros y búsqueda
+
 Carrito de Compras: Gestión de productos para compra
+
 Proceso de Checkout: Flujo completo de compra
+
 Historial de Órdenes: Seguimiento de compras anteriores
+
 Sistema de Reseñas: Calificación y comentarios de productos
+
 Gestión de Perfil: Actualización de datos personales
 
 👑 Para Administradores
+
 Dashboard: Métricas y estadísticas del sistema
+
 Gestión de Productos: CRUD completo de productos
+
 Gestión de Órdenes: Administración de pedidos
+
 Gestión de Clientes: Administración de usuarios
+
 Control de Inventario: Actualización de stock
 
 🔧 Tecnologías Utilizadas
+
 Backend
 Python 3.11+ - Lenguaje principal
 FastAPI - Framework web moderno y rápido
