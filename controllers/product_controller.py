@@ -82,20 +82,20 @@ async def update_product(
     Actualizar un producto existente.
     """
     try:
-        # Verificar que el producto existe
+        logger.info(f"📥 PUT /products/{product_id} - Datos recibidos: {product_data}")
+        
         check_query = text("SELECT id_key FROM products WHERE id_key = :product_id")
         check_result = db.execute(check_query, {"product_id": product_id})
         if not check_result.fetchone():
+            logger.error(f"❌ Producto {product_id} no encontrado")
             raise HTTPException(
                 status_code=404,
                 detail=f"Producto con ID {product_id} no encontrado"
             )
         
-        # Construir la consulta de actualización dinámicamente
         update_fields = []
         update_values = {"product_id": product_id}
         
-        # Agregar solo los campos que se proporcionan
         if "name" in product_data:
             update_fields.append("name = :name")
             update_values["name"] = product_data["name"]
@@ -124,32 +124,46 @@ async def update_product(
             update_fields.append("image_url = :image_url")
             update_values["image_url"] = product_data["image_url"]
         
-        # Siempre actualizar updated_at
         update_fields.append("updated_at = :updated_at")
         update_values["updated_at"] = datetime.utcnow()
         
         if not update_fields:
+            logger.error("❌ No se proporcionaron datos para actualizar")
             raise HTTPException(
                 status_code=400,
                 detail="No se proporcionaron datos para actualizar"
             )
         
-        # Ejecutar actualización
         update_query = text(f"""
             UPDATE products 
             SET {', '.join(update_fields)}
             WHERE id_key = :product_id
         """)
         
-        db.execute(update_query, update_values)
+        logger.info(f"📝 Query de actualización: {update_query}")
+        logger.info(f"📝 Valores: {update_values}")
+        
+        result = db.execute(update_query, update_values)
         db.commit()
         
         logger.info(f"✅ Producto actualizado ID: {product_id}")
         
+        get_query = text("""
+            SELECT * FROM products WHERE id_key = :product_id
+        """)
+        updated_product = db.execute(get_query, {"product_id": product_id}).fetchone()
+        
+        product_dict = {}
+        if updated_product:
+            columns = updated_product._mapping.keys()
+            for column in columns:
+                product_dict[column] = getattr(updated_product, column)
+        
         return {
             "success": True,
             "message": "Producto actualizado exitosamente",
-            "product_id": product_id
+            "product_id": product_id,
+            "data": product_dict
         }
         
     except HTTPException:
